@@ -1,6 +1,13 @@
 {
   "name": "bytebook",
   "version": "1.0.0",
+  "description": "ByteBook — 16-Bit AI Interactive Verbatim Reader & Language Learning Engine",
+  "author": "Osama (ByteBook)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/osama0511/ByteBook.git"
+  },
+  "homepage": "https://github.com/osama0511/ByteBook#readme",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
@@ -58,6 +65,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build": "expo export -p web && node ./scripts/patch-dist-pwa.js",
     "export:web": "expo export -p web && node ./scripts/patch-dist-pwa.js",
     "lint": "expo lint"
   },

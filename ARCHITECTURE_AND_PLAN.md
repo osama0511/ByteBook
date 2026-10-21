@@ -420,11 +420,35 @@ CREATE TABLE IF NOT EXISTS saved_translations (
 
 ---
 
-## 8. خارطة طريق التنفيذ للمرحلة القادمة (Phase 2 Readiness)
+## 8. سجل المراحل المنجزة (Execution Milestones & Achievements)
 
-بانتهاء هذه المرحلة التأسيسية، أصبحت بيئة **ByteBook** جاهزة بالكامل وتضم:
-1. تهيئة مشروع Expo Router + TypeScript مع دعم iOS و Web/PWA.
-2. تثبيت كافة المكتبات الأساسية (`expo-sqlite`, `expo-file-system`, `expo-document-picker`, `expo-secure-store`, `@shopify/flash-list`, `zustand`, وخطوط البكسل والقراءة).
-3. بناء الهيكل المعماري الكامل والعقود البرمجية (Interfaces, Types, Themes, Schemas, Stores).
+### المرحلة الأولى: التأسيس والمعمارية النظيفة (Foundation & Clean Architecture) — [مكتملة ✓]
+1. تهيئة مشروع Expo Router SDK 57 + React Native 0.86 + React 19 + TypeScript.
+2. بناء الهيكل المعماري الطبقي (Clean Architecture): Presentation, State Management, Domain/Services, Data/Storage.
+3. تصميم نظام التصميم البكسلي (16-Bit Pixel UI Kit): الأزرار، الإطارات، الشارات، النوافذ، وأشرطة التقدم.
+4. تثبيت منظومة الخطوط المزدوجة (PressStart2P, Silkscreen, VT323, Literata, IBM Plex Sans Arabic).
 
-في الرسالة القادمة، سننتقل مباشرة إلى **كتابة المنطق البرمجي الكامل والشاشات التفاعلية** فوق هذه البنية الصلبة.
+### المرحلة الثانية: الشاشات التفاعلية ومحركات القراءة (Core Reader & Interactive Engine) — [مكتملة ✓]
+1. بناء شاشة المكتبة الرقمية (`app/index.tsx`) مع محرك استيراد وتجزئة الكتب (EPUB, PDF, TXT).
+2. حل مشكلة المراجع الدائرية للكتب المعقدة (*Grokking Algorithms*) عبر باتش `patch-pdfjs.js` مع عزل الصفحات المتعطلة واستخراج المخططات تلقائياً.
+3. تطوير شاشة القارئ المتدفق بنظام الشابتر بشابتر (`app/reader/[bookId].tsx`) بدون أي تلخيص مع زر "أنهيت الشابتر" لتحليل الأجزاء التالية فورياً.
+4. تكامل محرك الترجمة السياقي المزدوج (Gemini API & GroqCloud LPU) مع نافذة الترجمة السفلية وحفظ المفردات المشفر بـ `expo-secure-store`.
+5. تطوير شاشة بنك المفردات (`app/vocabulary.tsx`) مع نمط بطاقات المراجعة التفاعلية (Flashcards).
+6. تطوير عارض المخططات عالي الدقة (`FigureLightboxModal`) مع التقريب باللمس والربط ثنائي الاتجاه بالفقرات.
+
+### المرحلة الثالثة: التجاوب الكامل ودعم PWA المستقل (Mobile Responsiveness & Standalone PWA) — [مكتملة ✓]
+1. ضبط التجاوب الكامل لكافة الأزرار والحاويات مع شاشات الجوال الصغيرة (iPhone SE / iPhone 13 mini) عبر Flexbox المرن وإلغاء القيود العرضية الصلبة لمنع أي overflow.
+2. دعم نمط **iOS Safari Standalone PWA** الشامل عبر قوالب `app/+html.tsx` وميتا تاجات الشاشة الكاملة وإخفاء شريط المتصفح.
+3. تحديث الهوية البصرية وشعار التطبيق الجديد عبر حزمة الأيقونات عالية الدقة (App Icon, Favicon, Splash Icon, Android Adaptive).
+4. أتمتة تصدير نسخة الويب وتكاملها التلقائي للنشر على Vercel و GitHub Pages.
+
+---
+
+## 9. خارطة الطريق المستقبلية (Future Roadmap & Expansion Plan)
+
+1. **الترجمة غير المتصلة بالإنترنت بالكامل (On-Device Local Small Language Models):**
+   - دمج نماذج خفيفة مدمجة محلياً (مثل WebAssembly / ONNX Runtime) لتوفير الترجمة السياقية دون الحاجة لأي مفتاح API عند انقطاع الإنترنت.
+2. **تصدير بنك المفردات (Anki / CSV Deck Export):**
+   - تمكين القارئ من تصدير كلماته المحفوظة وسياقاتها إلى حزم Anki أو ملفات CSV للمراجعة الخارجية.
+3. **مزامنة التقدم السحابية الاختيارية (Optional End-to-End Encrypted Cloud Sync):**
+   - دعم مزامنة مشفرة بين أجهزة القارئ المختلفة (iPad / iPhone / Web) مع الحفاظ على مبدأ الخصوصية التامة والتخزين المحلي أولاً.

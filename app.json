@@ -3,6 +3,7 @@
     "name": "ByteBook",
     "slug": "bytebook",
     "version": "1.0.0",
+    "description": "16-Bit AI Interactive Verbatim Reader with Progressive Chapter Engine & Contextual AI Translation",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bytebook",
