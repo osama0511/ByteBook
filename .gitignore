@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# environment secrets (API keys)
+.env
+.env.*
+!.env.example
