@@ -1,6 +1,7 @@
 /**
  * ByteBook — PixelButton Component
- * Upgraded with larger, ultra-clear Arabic & English typography, tactile 16-bit press displacement,
+ * Upgraded with responsive mobile-first layout, comfortable touch targets (min 40-48px),
+ * text wrapping for long Arabic/English labels, tactile 16-bit press displacement,
  * and crisp retro hard shadows.
  */
 
@@ -33,6 +34,7 @@ export interface PixelButtonProps {
   icon?: PixelIconName;
   disabled?: boolean;
   fullWidth?: boolean;
+  flex?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -44,6 +46,7 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
   icon,
   disabled = false,
   fullWidth = false,
+  flex = false,
   style,
 }) => {
   const [pressed, setPressed] = useState(false);
@@ -74,15 +77,17 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
     size === 'sm'
       ? PixelSpacing.sm + 4
       : size === 'lg'
-      ? PixelSpacing.lg + 4
-      : PixelSpacing.md + 4;
+      ? PixelSpacing.md + 6
+      : PixelSpacing.md + 2;
 
   const paddingVertical =
     size === 'sm'
-      ? PixelSpacing.xs + 2
+      ? PixelSpacing.xs + 4
       : size === 'lg'
-      ? PixelSpacing.md
-      : PixelSpacing.sm + 2;
+      ? PixelSpacing.sm + 6
+      : PixelSpacing.sm + 4;
+
+  const minHeight = size === 'sm' ? 38 : size === 'lg' ? 50 : 44;
 
   const handlePressIn = () => {
     setPressed(true);
@@ -101,9 +106,11 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      hitSlop={4}
       style={[
         styles.wrapper,
         fullWidth ? styles.fullWidth : null,
+        flex ? styles.flexButton : null,
         pressed ? styles.pressedOffset : null,
         disabled ? styles.disabled : null,
         style,
@@ -116,6 +123,7 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
             backgroundColor: bg,
             paddingHorizontal,
             paddingVertical,
+            minHeight,
           },
           createPixelBorder(colors, 'thin', 'primary'),
           !pressed
@@ -139,10 +147,11 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
               size === 'sm'
                 ? typography.pixelBadgeLabel
                 : typography.pixelButtonLabel,
+              styles.labelText,
               {
                 color: textColor,
-                fontSize: size === 'sm' ? 14 : size === 'lg' ? 17 : 15,
-                lineHeight: size === 'sm' ? 20 : size === 'lg' ? 24 : 22,
+                fontSize: size === 'sm' ? 14 : size === 'lg' ? 16 : 15,
+                lineHeight: size === 'sm' ? 20 : size === 'lg' ? 23 : 21,
               },
             ]}
           >
@@ -157,10 +166,17 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     alignSelf: 'flex-start',
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   fullWidth: {
     alignSelf: 'stretch',
     width: '100%',
+  },
+  flexButton: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: '46%',
   },
   pressedOffset: {
     transform: [
@@ -172,9 +188,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
   iconWrap: {
     marginRight: 6,
+    flexShrink: 0,
+  },
+  labelText: {
+    flexShrink: 1,
+    textAlign: 'center',
   },
   disabled: {
     opacity: 0.45,

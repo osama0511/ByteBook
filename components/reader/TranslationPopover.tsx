@@ -1,10 +1,16 @@
-/**
+﻿/**
  * ByteBook — RPG Dialog Box / Pixel Bottom Sheet for Word & Sentence Translation
  * Upgraded with larger, clearer typography and toggleable "⏹️ إيقاف النطق" speech buttons.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { speechService } from '../../services/translation';
 import { useLibraryStore, useReaderStore, useThemeStore } from '../../store';
 import { PixelSpacing } from '../../theme/pixelDesignSystem';
@@ -147,7 +153,11 @@ export const TranslationPopover: React.FC = () => {
             </Text>
           </View>
         ) : activeTranslation ? (
-          <View style={styles.body}>
+          <ScrollView
+            style={styles.scrollBody}
+            contentContainerStyle={styles.body}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Primary Contextual Translation */}
             <View
               style={[
@@ -164,7 +174,7 @@ export const TranslationPopover: React.FC = () => {
                     label={activeTranslation.partOfSpeech}
                     variant="gold"
                   />
-                ) : <View />}
+                ) : null}
                 <PixelBadge
                   label={
                     activeTranslation.fromCache
@@ -256,6 +266,7 @@ export const TranslationPopover: React.FC = () => {
                 size="sm"
                 variant={justSaved || isAlreadySaved ? 'accent' : 'gold'}
                 icon={justSaved || isAlreadySaved ? 'check' : 'vocab'}
+                flex
                 onPress={handleSaveToVocab}
               />
               <PixelButton
@@ -267,6 +278,7 @@ export const TranslationPopover: React.FC = () => {
                 size="sm"
                 variant={isSpeakingSentence ? 'danger' : 'secondary'}
                 icon={isSpeakingSentence ? 'close' : 'speaker'}
+                flex
                 onPress={() =>
                   speechService.toggleSpeakEnglish(
                     sentenceSpeechId,
@@ -275,7 +287,7 @@ export const TranslationPopover: React.FC = () => {
                 }
               />
             </View>
-          </View>
+          </ScrollView>
         ) : null}
       </PixelFrame>
     </View>
@@ -284,10 +296,7 @@ export const TranslationPopover: React.FC = () => {
 
 const styles = StyleSheet.create({
   bottomSheetOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: '100%',
     padding: PixelSpacing.sm,
     zIndex: 120,
   },
@@ -298,6 +307,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingBottom: PixelSpacing.xs,
@@ -311,9 +321,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: PixelSpacing.xs,
     flex: 1,
+    minWidth: 160,
   },
   headerActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: PixelSpacing.xs,
   },
@@ -323,6 +335,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: PixelSpacing.sm,
     paddingVertical: PixelSpacing.md,
+  },
+  scrollBody: {
+    maxHeight: 240,
   },
   body: {
     gap: PixelSpacing.sm,
@@ -334,8 +349,10 @@ const styles = StyleSheet.create({
   },
   providerMetaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
     marginBottom: 2,
   },
   explanationText: {

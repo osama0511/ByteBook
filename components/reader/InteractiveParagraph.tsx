@@ -257,6 +257,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
               size="sm"
               variant={paraTransState?.translationAr ? 'accent' : 'secondary'}
               icon="translate"
+              flex
               onPress={() => handleTranslateParagraph(false)}
             />
 
@@ -265,6 +266,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
               size="sm"
               variant={paraTransState?.showSimplified ? 'gold' : 'secondary'}
               icon="sparkle"
+              flex
               onPress={() => handleTranslateParagraph(true)}
             />
 
@@ -275,6 +277,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
               size="sm"
               variant={isThisBlockSpeaking ? 'danger' : 'secondary'}
               icon={isThisBlockSpeaking ? 'close' : 'speaker'}
+              flex
               onPress={() =>
                 speechService.toggleSpeakEnglish(block.id, block.rawText)
               }
@@ -396,8 +399,9 @@ const styles = StyleSheet.create({
   paragraphToolbar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: PixelSpacing.sm,
+    gap: PixelSpacing.xs,
     marginTop: PixelSpacing.xs,
   },
   inlineTranslationBox: {
@@ -414,8 +418,10 @@ const styles = StyleSheet.create({
   },
   transHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: PixelSpacing.xs,
   },
   simplifiedConceptBox: {
     marginTop: PixelSpacing.xs,

@@ -203,6 +203,7 @@ export default function ByteBookVocabularyScreen() {
                 label="◀ السابقة"
                 size="sm"
                 variant="secondary"
+                flex
                 disabled={currentCardIndex === 0}
                 onPress={() => {
                   setCurrentCardIndex((i) => Math.max(0, i - 1));
@@ -213,12 +214,14 @@ export default function ByteBookVocabularyScreen() {
                 label={isCardFlipped ? 'إخفاء الجواب' : 'كشف الترجمة'}
                 size="sm"
                 variant="accent"
+                flex
                 onPress={() => setIsCardFlipped((f) => !f)}
               />
               <PixelButton
                 label="التالية ▶"
                 size="sm"
                 variant="primary"
+                flex
                 disabled={currentCardIndex >= vocabulary.length - 1}
                 onPress={() => {
                   setCurrentCardIndex((i) =>
@@ -272,7 +275,7 @@ export default function ByteBookVocabularyScreen() {
                     onPress={() => speechService.speakEnglish(item.word)}
                   />
                   <PixelButton
-                    label=""
+                    label="حذف"
                     size="sm"
                     variant="danger"
                     icon="trash"
@@ -355,8 +358,10 @@ const styles = StyleSheet.create({
   },
   flashcardHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: PixelSpacing.xs,
     marginBottom: PixelSpacing.md,
   },
   flashcardBody: {
@@ -375,8 +380,10 @@ const styles = StyleSheet.create({
   },
   flashcardNavRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: PixelSpacing.xs,
   },
   vocabTopRow: {
     flexDirection: 'row',
@@ -386,6 +393,8 @@ const styles = StyleSheet.create({
     gap: PixelSpacing.xs,
   },
   wordAndPhonetic: {
+    flex: 1,
+    minWidth: 160,
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
@@ -393,8 +402,9 @@ const styles = StyleSheet.create({
   },
   vocabActionButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
+    gap: PixelSpacing.xs,
   },
   sentenceBox: {
     marginTop: PixelSpacing.sm,

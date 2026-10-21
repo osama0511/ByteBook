@@ -163,6 +163,7 @@ export default function ByteBookLibraryScreen() {
                 size="md"
                 variant="gold"
                 icon="vocab"
+                flex
                 onPress={() => router.push('/vocabulary')}
               />
               <PixelButton
@@ -170,6 +171,7 @@ export default function ByteBookLibraryScreen() {
                 size="md"
                 variant="secondary"
                 icon="settings"
+                flex
                 onPress={() => router.push('/settings')}
               />
             </View>
@@ -194,6 +196,7 @@ export default function ByteBookLibraryScreen() {
                     label={PIXEL_THEMES[id].nameAr}
                     size="sm"
                     variant={active ? 'primary' : 'ghost'}
+                    flex
                     icon={
                       id === 'night_phosphor'
                         ? 'moon'
@@ -212,6 +215,7 @@ export default function ByteBookLibraryScreen() {
                 label="تصغير الخط A-"
                 size="sm"
                 variant="secondary"
+                flex
                 onPress={() => setReadingFontSize(readingFontSize - 2)}
               />
               <PixelBadge label={`${readingFontSize}px`} variant="gold" />
@@ -219,6 +223,7 @@ export default function ByteBookLibraryScreen() {
                 label="تكبير الخط A+"
                 size="sm"
                 variant="accent"
+                flex
                 onPress={() => setReadingFontSize(readingFontSize + 2)}
               />
             </View>
@@ -256,6 +261,7 @@ export default function ByteBookLibraryScreen() {
               variant="primary"
               size="lg"
               icon="upload"
+              fullWidth
               disabled={isImporting}
               onPress={handleImportBookFile}
             />
@@ -444,6 +450,7 @@ export default function ByteBookLibraryScreen() {
                     size="md"
                     variant="primary"
                     icon="book"
+                    flex
                     onPress={() => handleOpenBook(book)}
                   />
                 </View>
@@ -470,22 +477,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     flexWrap: 'wrap',
-    gap: PixelSpacing.sm,
+    gap: PixelSpacing.md,
   },
   brandGroup: {
     flex: 1,
-    minWidth: 230,
+    minWidth: '100%',
   },
   titleLine: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: PixelSpacing.sm,
   },
   navButtonsRow: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: PixelSpacing.xs,
+    gap: PixelSpacing.sm,
   },
   themeSwitchBar: {
     marginTop: PixelSpacing.md,
@@ -498,14 +508,19 @@ const styles = StyleSheet.create({
     gap: PixelSpacing.sm,
   },
   themePills: {
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    justifyContent: 'space-between',
+    gap: PixelSpacing.xs,
   },
   fontSizeQuickRow: {
+    width: '100%',
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
+    gap: PixelSpacing.xs,
   },
   importBannerRow: {
     flexDirection: 'row',
@@ -516,12 +531,13 @@ const styles = StyleSheet.create({
   },
   importTextCol: {
     flex: 1,
-    minWidth: 240,
+    minWidth: '100%',
     gap: 6,
   },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: PixelSpacing.sm,
     marginTop: PixelSpacing.sm,
   },
@@ -529,6 +545,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: PixelSpacing.xs,
     marginTop: PixelSpacing.xs,
   },
   bookShelfCard: {
@@ -536,6 +554,7 @@ const styles = StyleSheet.create({
   },
   bookRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: PixelSpacing.md,
     alignItems: 'flex-start',
   },
@@ -562,6 +581,7 @@ const styles = StyleSheet.create({
   },
   bookInfoCol: {
     flex: 1,
+    minWidth: 190,
     gap: 6,
   },
   bookBadgesTop: {
@@ -579,6 +599,7 @@ const styles = StyleSheet.create({
   snippetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
   },
   snippetText: {
@@ -597,13 +618,18 @@ const styles = StyleSheet.create({
     gap: PixelSpacing.sm,
   },
   chapterQuickPills: {
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    justifyContent: 'flex-start',
+    gap: PixelSpacing.xs,
   },
   footerRightBtns: {
+    width: '100%',
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: PixelSpacing.xs,
+    gap: PixelSpacing.sm,
   },
 });

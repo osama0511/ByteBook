@@ -208,12 +208,14 @@ export default function ByteBookSettingsScreen() {
               label="Gemini API (Google)"
               size="sm"
               variant={preferredProvider === 'gemini' ? 'primary' : 'secondary'}
+              flex
               onPress={() => setPreferredProvider('gemini')}
             />
             <PixelButton
               label="GroqCloud (Llama 3.3 LPU)"
               size="sm"
               variant={preferredProvider === 'groq' ? 'primary' : 'secondary'}
+              flex
               onPress={() => setPreferredProvider('groq')}
             />
             <PixelButton
@@ -222,6 +224,7 @@ export default function ByteBookSettingsScreen() {
               variant={
                 preferredProvider === 'free_builtin' ? 'primary' : 'secondary'
               }
+              flex
               onPress={() => setPreferredProvider('free_builtin')}
             />
           </View>
@@ -284,6 +287,7 @@ export default function ByteBookSettingsScreen() {
                 label={m}
                 size="sm"
                 variant={geminiModel === m ? 'accent' : 'secondary'}
+                flex
                 onPress={() => setGeminiModel(m)}
               />
             ))}
@@ -347,6 +351,7 @@ export default function ByteBookSettingsScreen() {
                 label={m}
                 size="sm"
                 variant={groqModel === m ? 'accent' : 'secondary'}
+                flex
                 onPress={() => setGroqModel(m)}
               />
             ))}
@@ -360,12 +365,14 @@ export default function ByteBookSettingsScreen() {
               label="حفظ المفاتيح والإعدادات في SecureStore"
               variant="primary"
               icon="check"
+              flex
               onPress={handleSaveVaultSettings}
             />
             <PixelButton
               label={isTesting ? 'جاري الاختبار...' : 'اختبار الترجمة الآن ⚡'}
               variant="gold"
               icon="sparkle"
+              flex
               disabled={isTesting}
               onPress={handleTestAiConnection}
             />
@@ -422,6 +429,7 @@ export default function ByteBookSettingsScreen() {
                 label={PIXEL_THEMES[id].nameAr}
                 size="sm"
                 variant={themeId === id ? 'primary' : 'secondary'}
+                flex
                 onPress={() => setThemeId(id)}
               />
             ))}
@@ -436,6 +444,7 @@ export default function ByteBookSettingsScreen() {
                   ? 'accent'
                   : 'secondary'
               }
+              flex
               onPress={() => setReadingFontPreference('serif_comfortable')}
             />
             <PixelButton
@@ -444,18 +453,21 @@ export default function ByteBookSettingsScreen() {
               variant={
                 readingFontPreference === 'pixel_retro' ? 'accent' : 'secondary'
               }
+              flex
               onPress={() => setReadingFontPreference('pixel_retro')}
             />
             <PixelButton
               label={`A- (${readingFontSize - 2})`}
               size="sm"
               variant="secondary"
+              flex
               onPress={() => setReadingFontSize(readingFontSize - 2)}
             />
             <PixelButton
               label={`A+ (${readingFontSize + 2})`}
               size="sm"
               variant="secondary"
+              flex
               onPress={() => setReadingFontSize(readingFontSize + 2)}
             />
           </View>
@@ -477,6 +489,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: PixelSpacing.md,
     flexWrap: 'wrap',
   },
@@ -488,13 +501,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: PixelSpacing.xs,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   rowWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: PixelSpacing.xs,
+    justifyContent: 'space-between',
+    gap: PixelSpacing.sm,
   },
   pixelInput: {
     borderWidth: 2,
@@ -505,6 +520,7 @@ const styles = StyleSheet.create({
   saveActionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: PixelSpacing.sm,
   },
   testOutputBox: {

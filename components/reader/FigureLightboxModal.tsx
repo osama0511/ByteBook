@@ -11,8 +11,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { speechService } from '../../services/translation';
 import { useReaderStore, useThemeStore } from '../../store';
 import { PixelSpacing } from '../../theme/pixelDesignSystem';
@@ -30,10 +32,12 @@ export const FigureLightboxModal: React.FC<FigureLightboxModalProps> = ({
   const { activeFigure, closeFigureModal } = useReaderStore();
   const { colors } = theme;
   const [zoomScale, setZoomScale] = useState<number>(1.25);
+  const { width: windowWidth } = useWindowDimensions();
 
   if (!activeFigure) return null;
 
-  const baseWidth = Math.round(340 * zoomScale);
+  const responsiveBaseWidth = Math.max(240, Math.min(340, windowWidth - 64));
+  const baseWidth = Math.round(responsiveBaseWidth * zoomScale);
   const baseHeight = Math.round(200 * zoomScale);
 
   const handleZoomIn = () => {
@@ -51,166 +55,173 @@ export const FigureLightboxModal: React.FC<FigureLightboxModalProps> = ({
       animationType="fade"
       onRequestClose={closeFigureModal}
     >
-      <View style={styles.backdrop}>
+      <SafeAreaView style={styles.backdrop} edges={['top', 'bottom', 'left', 'right']}>
         <PixelFrame variant="elevated" elevation="lg" style={styles.modalCard}>
-          {/* Top Header */}
-          <View
-            style={[
-              styles.header,
-              {
-                backgroundColor: colors.backgroundSecondary,
-                borderBottomColor: colors.borderOuter,
-              },
-            ]}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalScrollContent}
           >
-            <View style={styles.titleRow}>
-              <PixelBadge
-                label={`FIG.${activeFigure.figureNumber}`}
-                variant="figure"
-              />
-              <Text
-                style={[
-                  typography.pixelSectionTitle,
-                  { color: colors.textPrimary, flexShrink: 1 },
-                ]}
-                numberOfLines={1}
-              >
-                {activeFigure.title || `Figure ${activeFigure.figureNumber}`}
-              </Text>
-            </View>
-            <PixelButton
-              label="إغلاق X"
-              size="sm"
-              variant="danger"
-              onPress={closeFigureModal}
-            />
-          </View>
-
-          {/* Zoom Controls Toolbar */}
-          <View style={styles.zoomBar}>
-            <View style={styles.zoomButtons}>
-              <PixelButton
-                label="-"
-                size="sm"
-                variant="secondary"
-                icon="zoom-out"
-                onPress={handleZoomOut}
-              />
-              <PixelBadge
-                label={`ZOOM: ${Math.round(zoomScale * 100)}%`}
-                variant="gold"
-              />
-              <PixelButton
-                label="+"
-                size="sm"
-                variant="secondary"
-                icon="zoom-in"
-                onPress={handleZoomIn}
-              />
-              <PixelButton
-                label="100%"
-                size="sm"
-                variant="ghost"
-                onPress={() => setZoomScale(1.0)}
-              />
-              <PixelButton
-                label="250%"
-                size="sm"
-                variant="ghost"
-                onPress={() => setZoomScale(2.5)}
-              />
-            </View>
-            <PixelButton
-              label="نطق الوصف"
-              size="sm"
-              variant="secondary"
-              icon="speaker"
-              onPress={() => speechService.speakEnglish(activeFigure.caption)}
-            />
-          </View>
-
-          {/* Pinch-to-Zoom & 2D Pan Viewport */}
-          <View
-            style={[
-              styles.viewportOuter,
-              { borderColor: colors.borderOuter },
-            ]}
-          >
-            <ScrollView
-              horizontal
-              contentContainerStyle={styles.scrollContent}
-              maximumZoomScale={4.0}
-              minimumZoomScale={1.0}
-              showsHorizontalScrollIndicator
-              showsVerticalScrollIndicator
-            >
-              <ScrollView contentContainerStyle={styles.scrollContent}>
-                <PixelFigureDiagram
-                  figure={activeFigure}
-                  width={baseWidth}
-                  height={baseHeight}
-                />
-              </ScrollView>
-            </ScrollView>
-          </View>
-
-          {/* Bilingual Captions */}
-          <View
-            style={[
-              styles.captionBox,
-              {
-                backgroundColor: colors.surfaceInset,
-                borderColor: colors.borderOuter,
-              },
-            ]}
-          >
-            <Text
+            {/* Top Header */}
+            <View
               style={[
-                typography.readingParagraph,
-                styles.captionEn,
-                { color: colors.textPrimary },
+                styles.header,
+                {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderBottomColor: colors.borderOuter,
+                },
               ]}
             >
-              {activeFigure.caption}
-            </Text>
-            {activeFigure.captionAr ? (
+              <View style={styles.titleRow}>
+                <PixelBadge
+                  label={`FIG.${activeFigure.figureNumber}`}
+                  variant="figure"
+                />
+                <Text
+                  style={[
+                    typography.pixelSectionTitle,
+                    { color: colors.textPrimary, flexShrink: 1 },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {activeFigure.title || `Figure ${activeFigure.figureNumber}`}
+                </Text>
+              </View>
+              <PixelButton
+                label="إغلاق X"
+                size="sm"
+                variant="danger"
+                onPress={closeFigureModal}
+              />
+            </View>
+
+            {/* Zoom Controls Toolbar */}
+            <View style={styles.zoomBar}>
+              <View style={styles.zoomButtons}>
+                <PixelButton
+                  label="-"
+                  size="sm"
+                  variant="secondary"
+                  icon="zoom-out"
+                  onPress={handleZoomOut}
+                />
+                <PixelBadge
+                  label={`ZOOM: ${Math.round(zoomScale * 100)}%`}
+                  variant="gold"
+                />
+                <PixelButton
+                  label="+"
+                  size="sm"
+                  variant="secondary"
+                  icon="zoom-in"
+                  onPress={handleZoomIn}
+                />
+                <PixelButton
+                  label="100%"
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => setZoomScale(1.0)}
+                />
+                <PixelButton
+                  label="250%"
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => setZoomScale(2.5)}
+                />
+              </View>
+              <PixelButton
+                label="نطق الوصف"
+                size="sm"
+                variant="secondary"
+                icon="speaker"
+                onPress={() => speechService.speakEnglish(activeFigure.caption)}
+              />
+            </View>
+
+            {/* Pinch-to-Zoom & 2D Pan Viewport */}
+            <View
+              style={[
+                styles.viewportOuter,
+                { borderColor: colors.borderOuter },
+              ]}
+            >
+              <ScrollView
+                horizontal
+                contentContainerStyle={styles.scrollContent}
+                maximumZoomScale={4.0}
+                minimumZoomScale={1.0}
+                showsHorizontalScrollIndicator
+                showsVerticalScrollIndicator
+              >
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                  <PixelFigureDiagram
+                    figure={activeFigure}
+                    width={baseWidth}
+                    height={baseHeight}
+                  />
+                </ScrollView>
+              </ScrollView>
+            </View>
+
+            {/* Bilingual Captions */}
+            <View
+              style={[
+                styles.captionBox,
+                {
+                  backgroundColor: colors.surfaceInset,
+                  borderColor: colors.borderOuter,
+                },
+              ]}
+            >
               <Text
                 style={[
-                  typography.arabicTranslationBody,
-                  styles.captionAr,
-                  { color: colors.accentPrimary },
+                  typography.readingParagraph,
+                  styles.captionEn,
+                  { color: colors.textPrimary },
                 ]}
               >
-                {activeFigure.captionAr}
+                {activeFigure.caption}
               </Text>
-            ) : null}
-          </View>
+              {activeFigure.captionAr ? (
+                <Text
+                  style={[
+                    typography.arabicTranslationBody,
+                    styles.captionAr,
+                    { color: colors.accentPrimary },
+                  ]}
+                >
+                  {activeFigure.captionAr}
+                </Text>
+              ) : null}
+            </View>
 
-          {/* Bottom Navigation Actions */}
-          <View style={styles.footerActions}>
-            {activeFigure.anchorBlockId && onJumpToAnchorBlock ? (
+            {/* Bottom Navigation Actions */}
+            <View style={styles.footerActions}>
+              {activeFigure.anchorBlockId && onJumpToAnchorBlock ? (
+                <PixelButton
+                  label="الانتقال لموقع الشكل في الفصل ⤵"
+                  size="sm"
+                  variant="accent"
+                  icon="scroll"
+                  flex
+                  onPress={() => {
+                    const target = activeFigure.anchorBlockId!;
+                    closeFigureModal();
+                    onJumpToAnchorBlock(target);
+                  }}
+                />
+              ) : null}
               <PixelButton
-                label="الانتقال لموقع الشكل في الفصل ⤵"
+                label="العودة للقراءة ↩"
                 size="sm"
-                variant="accent"
-                icon="scroll"
-                onPress={() => {
-                  const target = activeFigure.anchorBlockId!;
-                  closeFigureModal();
-                  onJumpToAnchorBlock(target);
-                }}
+                variant="primary"
+                icon="return"
+                flex
+                onPress={closeFigureModal}
               />
-            ) : <View />}
-            <PixelButton
-              label="العودة للقراءة ↩"
-              size="sm"
-              variant="primary"
-              icon="return"
-              onPress={closeFigureModal}
-            />
-          </View>
+            </View>
+          </ScrollView>
         </PixelFrame>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -221,26 +232,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(6, 9, 11, 0.84)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: PixelSpacing.md,
+    padding: PixelSpacing.sm,
   },
   modalCard: {
     width: '100%',
     maxWidth: 680,
+    maxHeight: '94%',
+  },
+  modalScrollContent: {
+    paddingBottom: PixelSpacing.xs,
   },
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: PixelSpacing.sm,
     borderBottomWidth: 2,
     marginBottom: PixelSpacing.sm,
-    gap: PixelSpacing.sm,
+    gap: PixelSpacing.xs,
   },
   titleRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: PixelSpacing.xs,
     flex: 1,
+    minWidth: 160,
   },
   zoomBar: {
     flexDirection: 'row',

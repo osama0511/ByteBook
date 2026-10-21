@@ -1,15 +1,18 @@
 /**
  * ByteBook — 16-Bit RPG Dialog Box / Pixel Modal
+ * Upgraded with SafeAreaView & ScrollView protection for small mobile screens (iPhone).
  */
 
 import React from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../store';
 import { PixelSpacing } from '../../theme/pixelDesignSystem';
 import { PixelButton } from './PixelButton';
@@ -44,7 +47,7 @@ export const PixelModal: React.FC<PixelModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View
+      <SafeAreaView
         style={[
           styles.backdrop,
           position === 'bottom' ? styles.backdropBottom : styles.backdropCenter,
@@ -71,14 +74,20 @@ export const PixelModal: React.FC<PixelModalProps> = ({
           >
             <View style={styles.titleTextWrap}>
               <Text
-                style={[typography.pixelSectionTitle, { color: colors.accentPrimary }]}
-                numberOfLines={1}
+                style={[
+                  typography.pixelSectionTitle,
+                  { color: colors.accentPrimary },
+                ]}
+                numberOfLines={2}
               >
                 {title}
               </Text>
               {subtitle ? (
                 <Text
-                  style={[typography.pixelBadgeLabel, { color: colors.textSecondary }]}
+                  style={[
+                    typography.pixelBadgeLabel,
+                    { color: colors.textSecondary },
+                  ]}
                   numberOfLines={1}
                 >
                   {subtitle}
@@ -86,16 +95,23 @@ export const PixelModal: React.FC<PixelModalProps> = ({
               ) : null}
             </View>
             <PixelButton
-              label="ESC"
+              label="إغلاق X"
               size="sm"
               variant="secondary"
               icon="close"
               onPress={onClose}
             />
           </View>
-          <View style={styles.contentWrap}>{children}</View>
+          <ScrollView
+            style={styles.scrollArea}
+            contentContainerStyle={styles.contentWrap}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
         </PixelFrame>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -104,7 +120,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(8, 10, 12, 0.76)',
-    padding: PixelSpacing.md,
+    padding: PixelSpacing.sm,
   },
   backdropCenter: {
     justifyContent: 'center',
@@ -124,17 +140,23 @@ const styles = StyleSheet.create({
   },
   titleBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: PixelSpacing.xs,
     padding: PixelSpacing.sm,
-    marginBottom: PixelSpacing.md,
+    marginBottom: PixelSpacing.sm,
     borderBottomWidth: 2,
   },
   titleTextWrap: {
     flex: 1,
-    marginRight: PixelSpacing.sm,
+    minWidth: 160,
+  },
+  scrollArea: {
+    maxHeight: '100%',
   },
   contentWrap: {
     width: '100%',
+    paddingBottom: PixelSpacing.xs,
   },
 });

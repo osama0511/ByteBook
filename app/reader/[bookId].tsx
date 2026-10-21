@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ByteBook — Abjad-Style Verbatim Reflowable Reader + Chapter-by-Chapter Engine
  * Features:
  * - Preserves 100% of the book's original verbatim content (NO summarization).
@@ -15,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,6 +54,8 @@ import {
 export default function ByteBookReaderScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const flashListRef = useRef<any>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const galleryDiagramWidth = Math.max(220, Math.min(340, windowWidth - 76));
 
   const {
     theme,
@@ -455,6 +458,7 @@ export default function ByteBookReaderScreen() {
                 size="sm"
                 variant="danger"
                 icon="close"
+                flex
                 onPress={() => speechService.stop()}
               />
             ) : null}
@@ -462,12 +466,14 @@ export default function ByteBookReaderScreen() {
               label={`🖼️ الصور (${currentBook.figures.length})`}
               size="sm"
               variant="accent"
+              flex
               onPress={() => setShowFiguresModal(true)}
             />
             <PixelButton
-              label="Aa تكبير الخط"
+              label="Aa الخط والإضاءة"
               size="sm"
               variant="gold"
+              flex
               onPress={() => setShowAppearanceModal(true)}
             />
             <PixelButton
@@ -475,6 +481,7 @@ export default function ByteBookReaderScreen() {
               size="sm"
               variant="secondary"
               icon="scroll"
+              flex
               onPress={() => setShowChaptersModal(true)}
             />
           </View>
@@ -533,6 +540,7 @@ export default function ByteBookReaderScreen() {
           </View>
         ) : (
           <FlashList
+            style={styles.flashList}
             ref={flashListRef}
             data={currentChapter.blocks}
             keyExtractor={(item) => item.id}
@@ -640,6 +648,7 @@ export default function ByteBookReaderScreen() {
                       label="◀ الـ 10 صفحات السابقة"
                       size="md"
                       variant="secondary"
+                      fullWidth
                       onPress={() => {
                         speechService.stop();
                         setActiveChapterIndex(activeChapterIndex - 1);
@@ -649,7 +658,7 @@ export default function ByteBookReaderScreen() {
                         });
                       }}
                     />
-                  ) : <View />}
+                  ) : null}
 
                   {hasNextChapter ? (
                     <PixelButton
@@ -659,6 +668,7 @@ export default function ByteBookReaderScreen() {
                       size="lg"
                       variant="primary"
                       icon="check"
+                      fullWidth
                       onPress={handleCompleteChapterAndNext}
                     />
                   ) : (
@@ -667,6 +677,7 @@ export default function ByteBookReaderScreen() {
                       size="lg"
                       variant="gold"
                       icon="check"
+                      fullWidth
                       onPress={handleCompleteChapterAndNext}
                     />
                   )}
@@ -932,7 +943,11 @@ export default function ByteBookReaderScreen() {
                   />
                 </View>
                 <View style={styles.figGalleryPreview}>
-                  <PixelFigureDiagram figure={fig} width={280} height={145} />
+                  <PixelFigureDiagram
+                    figure={fig}
+                    width={galleryDiagramWidth}
+                    height={145}
+                  />
                 </View>
                 <Text
                   style={[
@@ -972,20 +987,25 @@ const styles = StyleSheet.create({
   bookTitleCenter: {
     flex: 1,
     minWidth: 160,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: PixelSpacing.xs,
   },
   topHudActions: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: PixelSpacing.xs,
+    marginTop: 2,
   },
   returnAnchorBanner: {
     marginTop: PixelSpacing.xs,
     padding: PixelSpacing.xs,
     borderWidth: 2,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: PixelSpacing.xs,
   },
@@ -999,23 +1019,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: PixelSpacing.xl,
   },
+  flashList: {
+    flex: 1,
+  },
   flashListContent: {
-    paddingHorizontal: PixelSpacing.lg,
+    paddingHorizontal: PixelSpacing.md,
     paddingTop: PixelSpacing.md,
-    paddingBottom: 200,
+    paddingBottom: 60,
   },
   chapterBannerBox: {
     padding: PixelSpacing.md,
     borderWidth: 2,
     marginBottom: PixelSpacing.lg,
-    gap: 6,
+    gap: 8,
   },
   chapterBannerMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
+    gap: PixelSpacing.xs,
   },
   chapterCompleteCard: {
     marginTop: PixelSpacing.lg,
@@ -1026,7 +1049,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: PixelSpacing.md,
+    gap: PixelSpacing.sm,
     marginTop: PixelSpacing.md,
   },
   bottomHudBar: {
@@ -1034,11 +1057,14 @@ const styles = StyleSheet.create({
     paddingVertical: PixelSpacing.sm,
     borderTopWidth: 2,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: PixelSpacing.md,
+    gap: PixelSpacing.sm,
   },
   bottomProgressWrap: {
     flex: 1,
+    minWidth: 180,
   },
   modalSectionStack: {
     gap: PixelSpacing.md,
@@ -1049,11 +1075,14 @@ const styles = StyleSheet.create({
   rowWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: PixelSpacing.xs,
   },
   figGalleryHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: PixelSpacing.xs,
     marginBottom: PixelSpacing.xs,

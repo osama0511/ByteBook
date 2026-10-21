@@ -5,7 +5,13 @@
  */
 
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { BookFigureRecord } from '../../services/parser';
 import { useThemeStore } from '../../store';
 import { PixelSpacing } from '../../theme/pixelDesignSystem';
@@ -24,6 +30,8 @@ export const InlineFigureCard: React.FC<InlineFigureCardProps> = ({
   const { theme, typography } = useThemeStore();
   const { colors } = theme;
   const [showArabicCaption, setShowArabicCaption] = useState(true);
+  const { width: windowWidth } = useWindowDimensions();
+  const diagramWidth = Math.max(220, Math.min(340, windowWidth - 64));
 
   return (
     <PixelFrame
@@ -58,7 +66,11 @@ export const InlineFigureCard: React.FC<InlineFigureCardProps> = ({
         onPress={() => onOpenZoom(figure)}
         style={[styles.diagramWrapper, { borderColor: colors.borderOuter }]}
       >
-        <PixelFigureDiagram figure={figure} width={330} height={185} />
+        <PixelFigureDiagram
+          figure={figure}
+          width={diagramWidth}
+          height={185}
+        />
       </Pressable>
 
       <View style={styles.captionContainer}>
@@ -114,6 +126,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: PixelSpacing.sm,
@@ -121,9 +134,11 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: PixelSpacing.xs,
     flex: 1,
+    minWidth: 160,
   },
   diagramWrapper: {
     alignItems: 'center',
