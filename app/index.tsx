@@ -466,6 +466,8 @@ export default function ByteBookLibraryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   scrollContainer: {
     padding: PixelSpacing.md,

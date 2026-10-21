@@ -29,6 +29,7 @@ if (fs.existsSync(htmlPath)) {
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ByteBook" />
     <meta name="application-name" content="ByteBook" />
+    <meta name="theme-color" content="#0D130F" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/favicon.png" />
   `;
@@ -39,18 +40,25 @@ if (fs.existsSync(htmlPath)) {
     '<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1.00001, viewport-fit=cover, user-scalable=no, shrink-to-fit=no" />'
   );
 
-  // Add global CSS to prevent horizontal overflow and support safe areas
+  // Replace any existing theme-color
+  html = html.replace(/<meta name="theme-color" content="[^"]*"\s*\/?>/gi, '<meta name="theme-color" content="#0D130F" />');
+
+  // Add global CSS to prevent horizontal overflow, set dark background, and support safe areas
   const responsiveCss = `
     <style id="bytebook-responsive-pwa">
       html, body, #root {
         width: 100% !important;
         max-width: 100vw !important;
+        height: 100% !important;
+        min-height: 100% !important;
         overflow-x: hidden !important;
         margin: 0 !important;
         padding: 0 !important;
         -webkit-text-size-adjust: 100%;
         -webkit-tap-highlight-color: transparent;
         box-sizing: border-box !important;
+        background-color: #0D130F !important;
+        background: #0D130F !important;
       }
       *, *::before, *::after {
         box-sizing: border-box !important;

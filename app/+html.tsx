@@ -25,7 +25,7 @@ export default function Root({ children }: PropsWithChildren) {
         />
         <meta name="apple-mobile-web-app-title" content="ByteBook" />
         <meta name="application-name" content="ByteBook" />
-        <meta name="theme-color" content="#2B1E16" />
+        <meta name="theme-color" content="#0D130F" />
 
         {/* App Icons */}
         <link rel="apple-touch-icon" href="/favicon.png" />
@@ -38,19 +38,20 @@ export default function Root({ children }: PropsWithChildren) {
           dangerouslySetInnerHTML={{
             __html: `
               html, body, #root {
-                width: 100%;
-                max-width: 100vw;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-                overflow-x: hidden;
+                width: 100% !important;
+                max-width: 100vw !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow-x: hidden !important;
                 -webkit-text-size-adjust: 100%;
                 -webkit-tap-highlight-color: transparent;
-                box-sizing: border-box;
-                background-color: #F4ECD8;
+                box-sizing: border-box !important;
+                background-color: #0D130F !important;
+                background: #0D130F !important;
               }
               *, *::before, *::after {
-                box-sizing: border-box;
+                box-sizing: border-box !important;
               }
               button, input, select, textarea {
                 max-width: 100%;

@@ -22,6 +22,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { byteBookDb } from '../database';
 import { useThemeStore } from '../store';
@@ -54,18 +55,36 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const activeBg = theme.isDark ? '#0D130F' : theme.colors.backgroundPrimary;
+      document.documentElement.style.backgroundColor = activeBg;
+      document.body.style.backgroundColor = activeBg;
+      const rootEl = document.getElementById('root');
+      if (rootEl) {
+        rootEl.style.backgroundColor = activeBg;
+      }
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', activeBg);
+      }
+    }
+  }, [theme]);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
+  const rootBgColor = theme.isDark ? '#0D130F' : theme.colors.backgroundPrimary;
+
   return (
-    <SafeAreaProvider style={{ flex: 1, width: '100%' }}>
+    <SafeAreaProvider style={{ flex: 1, width: '100%', height: '100%', backgroundColor: '#0D130F' }}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: {
-            backgroundColor: theme.colors.backgroundPrimary,
+            backgroundColor: rootBgColor,
           },
         }}
       />
