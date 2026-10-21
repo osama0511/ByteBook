@@ -212,19 +212,19 @@ export default function ByteBookSettingsScreen() {
               onPress={() => setPreferredProvider('gemini')}
             />
             <PixelButton
-              label="GroqCloud (Llama 3.3 LPU)"
+              label="GroqCloud (LPU)"
               size="sm"
               variant={preferredProvider === 'groq' ? 'primary' : 'secondary'}
               flex
               onPress={() => setPreferredProvider('groq')}
             />
             <PixelButton
-              label="المترجم المجاني المدمج (Built-in)"
+              label="المترجم المجاني المدمج"
               size="sm"
               variant={
                 preferredProvider === 'free_builtin' ? 'primary' : 'secondary'
               }
-              flex
+              fullWidth
               onPress={() => setPreferredProvider('free_builtin')}
             />
           </View>
@@ -280,14 +280,14 @@ export default function ByteBookSettingsScreen() {
           >
             اختر نموذج Gemini المفضل:
           </Text>
-          <View style={styles.rowWrap}>
+          <View style={styles.modelsColumn}>
             {GEMINI_MODELS.map((m) => (
               <PixelButton
                 key={m}
                 label={m}
                 size="sm"
                 variant={geminiModel === m ? 'accent' : 'secondary'}
-                flex
+                fullWidth
                 onPress={() => setGeminiModel(m)}
               />
             ))}
@@ -344,14 +344,14 @@ export default function ByteBookSettingsScreen() {
           >
             اختر نموذج Groq المفضل:
           </Text>
-          <View style={styles.rowWrap}>
+          <View style={styles.modelsColumn}>
             {GROQ_MODELS.map((m) => (
               <PixelButton
                 key={m}
                 label={m}
                 size="sm"
                 variant={groqModel === m ? 'accent' : 'secondary'}
-                flex
+                fullWidth
                 onPress={() => setGroqModel(m)}
               />
             ))}
@@ -365,14 +365,14 @@ export default function ByteBookSettingsScreen() {
               label="حفظ المفاتيح والإعدادات في SecureStore"
               variant="primary"
               icon="check"
-              flex
+              fullWidth
               onPress={handleSaveVaultSettings}
             />
             <PixelButton
               label={isTesting ? 'جاري الاختبار...' : 'اختبار الترجمة الآن ⚡'}
               variant="gold"
               icon="sparkle"
-              flex
+              fullWidth
               disabled={isTesting}
               onPress={handleTestAiConnection}
             />
@@ -517,10 +517,14 @@ const styles = StyleSheet.create({
     paddingVertical: PixelSpacing.sm,
     fontSize: 18,
   },
+  modelsColumn: {
+    width: '100%',
+    flexDirection: 'column',
+    gap: PixelSpacing.xs,
+  },
   saveActionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    width: '100%',
+    flexDirection: 'column',
     gap: PixelSpacing.sm,
   },
   testOutputBox: {

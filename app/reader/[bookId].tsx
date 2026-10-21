@@ -432,7 +432,7 @@ export default function ByteBookReaderScreen() {
             <Text
               style={[
                 typography.pixelBadgeLabel,
-                { color: colors.accentPrimary, fontSize: 15 },
+                { color: colors.accentPrimary, fontSize: 14 },
               ]}
               numberOfLines={1}
             >
@@ -441,7 +441,7 @@ export default function ByteBookReaderScreen() {
             <Text
               style={[
                 typography.pixelBadgeLabel,
-                { color: colors.textSecondary, fontSize: 13 },
+                { color: colors.textSecondary, fontSize: 12 },
               ]}
               numberOfLines={1}
             >
@@ -450,41 +450,41 @@ export default function ByteBookReaderScreen() {
               }: ${currentChapter.title}`}
             </Text>
           </View>
+        </View>
 
-          <View style={styles.topHudActions}>
-            {activeSpeechId ? (
-              <PixelButton
-                label="⏹️ إيقاف النطق"
-                size="sm"
-                variant="danger"
-                icon="close"
-                flex
-                onPress={() => speechService.stop()}
-              />
-            ) : null}
+        <View style={styles.topHudActions}>
+          {activeSpeechId ? (
             <PixelButton
-              label={`🖼️ الصور (${currentBook.figures.length})`}
+              label="⏹️ إيقاف"
               size="sm"
-              variant="accent"
+              variant="danger"
+              icon="close"
               flex
-              onPress={() => setShowFiguresModal(true)}
+              onPress={() => speechService.stop()}
             />
-            <PixelButton
-              label="Aa الخط والإضاءة"
-              size="sm"
-              variant="gold"
-              flex
-              onPress={() => setShowAppearanceModal(true)}
-            />
-            <PixelButton
-              label="الشابترات"
-              size="sm"
-              variant="secondary"
-              icon="scroll"
-              flex
-              onPress={() => setShowChaptersModal(true)}
-            />
-          </View>
+          ) : null}
+          <PixelButton
+            label={`🖼️ الصور (${currentBook.figures.length})`}
+            size="sm"
+            variant="accent"
+            flex
+            onPress={() => setShowFiguresModal(true)}
+          />
+          <PixelButton
+            label="Aa الخط"
+            size="sm"
+            variant="gold"
+            flex
+            onPress={() => setShowAppearanceModal(true)}
+          />
+          <PixelButton
+            label="الشابترات"
+            size="sm"
+            variant="secondary"
+            icon="scroll"
+            flex
+            onPress={() => setShowChaptersModal(true)}
+          />
         </View>
 
         {/* Return-to-Reading-Line Banner */}
@@ -996,8 +996,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: PixelSpacing.xs,
-    marginTop: 2,
+    gap: 6,
+    marginTop: 6,
   },
   returnAnchorBanner: {
     marginTop: PixelSpacing.xs,

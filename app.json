@@ -29,6 +29,9 @@
       "name": "ByteBook — 16-Bit AI Interactive Reader",
       "shortName": "ByteBook",
       "display": "standalone",
+      "startUrl": "/",
+      "lang": "ar",
+      "dir": "rtl",
       "backgroundColor": "#F4ECD8",
       "themeColor": "#2B1E16"
     },

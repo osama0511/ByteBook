@@ -75,19 +75,19 @@ export const PixelButton: React.FC<PixelButtonProps> = ({
 
   const paddingHorizontal =
     size === 'sm'
-      ? PixelSpacing.sm + 4
+      ? PixelSpacing.xs + 4
       : size === 'lg'
-      ? PixelSpacing.md + 6
-      : PixelSpacing.md + 2;
+      ? PixelSpacing.md + 2
+      : PixelSpacing.sm + 2;
 
   const paddingVertical =
     size === 'sm'
-      ? PixelSpacing.xs + 4
+      ? PixelSpacing.xs + 3
       : size === 'lg'
-      ? PixelSpacing.sm + 6
-      : PixelSpacing.sm + 4;
+      ? PixelSpacing.sm + 4
+      : PixelSpacing.sm + 2;
 
-  const minHeight = size === 'sm' ? 38 : size === 'lg' ? 50 : 44;
+  const minHeight = size === 'sm' ? 36 : size === 'lg' ? 48 : 42;
 
   const handlePressIn = () => {
     setPressed(true);
@@ -168,15 +168,18 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: '100%',
     flexShrink: 1,
+    boxSizing: 'border-box' as any,
   },
   fullWidth: {
     alignSelf: 'stretch',
     width: '100%',
+    maxWidth: '100%',
   },
   flexButton: {
     flexGrow: 1,
     flexShrink: 1,
-    minWidth: '46%',
+    minWidth: 0,
+    maxWidth: '100%',
   },
   pressedOffset: {
     transform: [
@@ -189,6 +192,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    maxWidth: '100%',
+    boxSizing: 'border-box' as any,
+    overflow: 'hidden',
   },
   iconWrap: {
     marginRight: 6,
@@ -197,6 +203,12 @@ const styles = StyleSheet.create({
   labelText: {
     flexShrink: 1,
     textAlign: 'center',
+    ...(Platform.OS === 'web'
+      ? ({
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+        } as any)
+      : {}),
   },
   disabled: {
     opacity: 0.45,

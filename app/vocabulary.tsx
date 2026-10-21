@@ -211,7 +211,7 @@ export default function ByteBookVocabularyScreen() {
                 }}
               />
               <PixelButton
-                label={isCardFlipped ? 'إخفاء الجواب' : 'كشف الترجمة'}
+                label={isCardFlipped ? 'إخفاء' : 'كشف الترجمة'}
                 size="sm"
                 variant="accent"
                 flex

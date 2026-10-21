@@ -266,7 +266,7 @@ export const TranslationPopover: React.FC = () => {
                 size="sm"
                 variant={justSaved || isAlreadySaved ? 'accent' : 'gold'}
                 icon={justSaved || isAlreadySaved ? 'check' : 'vocab'}
-                flex
+                fullWidth
                 onPress={handleSaveToVocab}
               />
               <PixelButton
@@ -278,7 +278,7 @@ export const TranslationPopover: React.FC = () => {
                 size="sm"
                 variant={isSpeakingSentence ? 'danger' : 'secondary'}
                 icon={isSpeakingSentence ? 'close' : 'speaker'}
-                flex
+                fullWidth
                 onPress={() =>
                   speechService.toggleSpeakEnglish(
                     sentenceSpeechId,
@@ -381,11 +381,10 @@ const styles = StyleSheet.create({
     lineHeight: 25,
   },
   footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: PixelSpacing.xs,
-    marginTop: 2,
+    marginTop: PixelSpacing.xs,
+    width: '100%',
   },
 });

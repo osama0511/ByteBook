@@ -212,7 +212,7 @@ export default function ByteBookLibraryScreen() {
 
             <View style={styles.fontSizeQuickRow}>
               <PixelButton
-                label="تصغير الخط A-"
+                label="A- تصغير"
                 size="sm"
                 variant="secondary"
                 flex
@@ -220,7 +220,7 @@ export default function ByteBookLibraryScreen() {
               />
               <PixelBadge label={`${readingFontSize}px`} variant="gold" />
               <PixelButton
-                label="تكبير الخط A+"
+                label="A+ تكبير"
                 size="sm"
                 variant="accent"
                 flex

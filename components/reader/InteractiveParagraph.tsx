@@ -252,7 +252,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
               label={
                 paraTransState?.translationAr
                   ? 'إخفاء الترجمة ▲'
-                  : 'ترجمة الفقرة كاملة AR'
+                  : 'ترجمة الفقرة AR'
               }
               size="sm"
               variant={paraTransState?.translationAr ? 'accent' : 'secondary'}
@@ -262,7 +262,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
             />
 
             <PixelButton
-              label="شرح المصطلحات العلمية 💡"
+              label="شرح المصطلحات 💡"
               size="sm"
               variant={paraTransState?.showSimplified ? 'gold' : 'secondary'}
               icon="sparkle"
@@ -397,6 +397,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   paragraphToolbar: {
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',

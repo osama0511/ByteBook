@@ -22,6 +22,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { byteBookDb } from '../database';
 import { useThemeStore } from '../store';
 
@@ -58,7 +59,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <SafeAreaProvider style={{ flex: 1, width: '100%' }}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -68,6 +69,6 @@ export default function RootLayout() {
           },
         }}
       />
-    </>
+    </SafeAreaProvider>
   );
 }
