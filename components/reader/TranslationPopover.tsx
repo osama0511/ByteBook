@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ByteBook — RPG Dialog Box / Pixel Bottom Sheet for Word & Sentence Translation
  * Upgraded with larger, clearer typography and toggleable "⏹️ إيقاف النطق" speech buttons.
  */

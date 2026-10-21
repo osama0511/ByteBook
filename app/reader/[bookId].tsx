@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ByteBook — Abjad-Style Verbatim Reflowable Reader + Chapter-by-Chapter Engine
  * Features:
  * - Preserves 100% of the book's original verbatim content (NO summarization).
