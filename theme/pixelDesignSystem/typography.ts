@@ -15,6 +15,7 @@ export const PixelFontFamilies = {
   pixelTerminal: 'VT323_400Regular',
   /** Comfortable Reflowable English Book Body Font */
   readingSerifRegular: 'Literata_400Regular',
+  readingSerifItalic: 'Literata_400Regular_Italic',
   readingSerifBold: 'Literata_700Bold',
   /** Crisp Arabic Contextual Translation & UI Font */
   arabicRegular: 'IBMPlexSansArabic_400Regular',

@@ -15,13 +15,19 @@
 
 import { byteBookDb } from '../../database';
 import { SECURE_KEYS, secureVault } from '../../storage';
-import { BookFigureRecord } from './types';
+import {
+  analyzePageLayout,
+  computeModalFontSize,
+  detectFontFlagsFromName,
+  PageFragment,
+} from './layoutAnalyzer';
+import { BookFigureRecord, RawRichParagraph } from './types';
 
 export const PAGES_PER_BATCH = 10;
 
 export interface ExtractedChapterRaw {
   title: string;
-  paragraphs: string[];
+  paragraphs: (string | RawRichParagraph)[];
   paragraphFigures?: Record<number, string[]>;
   isExtracted: boolean;
   startPage?: number;
@@ -133,45 +139,184 @@ const openPdfDocument = async (pdfBytes: Uint8Array): Promise<any> => {
   return await loadingTask.promise;
 };
 
-interface PositionedTextLine {
-  text: string;
-  fontSize: number;
-  topY: number;
-  bottomY: number;
-}
-
 interface PositionedParagraph {
   text: string;
   topY: number;
   bottomY: number;
+  /** Rich layout block (heading / list / table / code / styled paragraph) */
+  rich: RawRichParagraph;
+}
+
+interface PageFragmentsResult {
+  fragments: PageFragment[];
+  pageHeight: number;
+  pageWidth: number;
+}
+
+interface ResolvedFontFlags {
+  bold: boolean;
+  italic: boolean;
+  mono: boolean;
+  symbol: boolean;
 }
 
 /**
- * Layer 1: Extracts all text lines from a PDF page using viewport-transformed coordinates.
+ * Collects thin horizontal strokes / rectangles (underline candidates) from the page operator list,
+ * expressed in viewport coordinates. Fully defensive: any failure simply yields no underlines.
  */
-const extractViewportLinesFromPage = async (
+const extractUnderlineSegments = (
+  opList: any,
+  pdfjsLib: any,
+  viewportTransform: number[]
+): { x1: number; x2: number; y: number }[] => {
+  const segments: { x1: number; x2: number; y: number }[] = [];
+  try {
+    const OPS = pdfjsLib?.OPS;
+    const Util = pdfjsLib?.Util;
+    if (!OPS || !Util || !opList?.fnArray) return segments;
+
+    const paintOps = new Set<number>([
+      OPS.stroke,
+      OPS.closeStroke,
+      OPS.fill,
+      OPS.eoFill,
+      OPS.fillStroke,
+      OPS.eoFillStroke,
+      OPS.closeFillStroke,
+      OPS.closeEOFillStroke,
+    ]);
+
+    let ctm: number[] = [1, 0, 0, 1, 0, 0];
+    const stack: number[][] = [];
+    let subpaths: { x: number; y: number }[][] = [];
+
+    const toViewport = (x: number, y: number) => {
+      const m: number[] = Util.transform(viewportTransform, ctm);
+      return { x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] };
+    };
+
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      const fn = opList.fnArray[i];
+      const args = opList.argsArray[i];
+
+      if (fn === OPS.save) {
+        stack.push(ctm.slice());
+      } else if (fn === OPS.restore) {
+        ctm = stack.pop() ?? ctm;
+      } else if (fn === OPS.transform && Array.isArray(args)) {
+        ctm = Util.transform(ctm, args);
+      } else if (fn === OPS.constructPath && Array.isArray(args)) {
+        const ops: number[] = args[0] || [];
+        const coords: number[] = args[1] || [];
+        let ci = 0;
+        for (const op of ops) {
+          if (op === OPS.moveTo) {
+            subpaths.push([toViewport(coords[ci], coords[ci + 1])]);
+            ci += 2;
+          } else if (op === OPS.lineTo) {
+            const cur = subpaths[subpaths.length - 1];
+            if (cur) cur.push(toViewport(coords[ci], coords[ci + 1]));
+            ci += 2;
+          } else if (op === OPS.rectangle) {
+            const [rx, ry, rw, rh] = [coords[ci], coords[ci + 1], coords[ci + 2], coords[ci + 3]];
+            subpaths.push([
+              toViewport(rx, ry),
+              toViewport(rx + rw, ry),
+              toViewport(rx + rw, ry + rh),
+              toViewport(rx, ry + rh),
+            ]);
+            ci += 4;
+          } else if (op === OPS.curveTo) {
+            ci += 6;
+          } else if (op === OPS.curveTo2 || op === OPS.curveTo3) {
+            ci += 4;
+          }
+        }
+      } else if (paintOps.has(fn)) {
+        for (const sp of subpaths) {
+          if (sp.length < 2) continue;
+          const xs = sp.map((p) => p.x);
+          const ys = sp.map((p) => p.y);
+          const w = Math.max(...xs) - Math.min(...xs);
+          const h = Math.max(...ys) - Math.min(...ys);
+          if (h <= 2.2 && w >= 4 && w <= 500) {
+            segments.push({
+              x1: Math.min(...xs),
+              x2: Math.max(...xs),
+              y: (Math.max(...ys) + Math.min(...ys)) / 2,
+            });
+          }
+        }
+        subpaths = [];
+      } else if (fn === OPS.endPath) {
+        subpaths = [];
+      }
+      if (segments.length > 3000) break;
+    }
+  } catch {
+    // Underline detection is best-effort only
+  }
+  return segments;
+};
+
+/**
+ * Layer 1: Extracts every positioned text fragment of a PDF page (viewport coordinates,
+ * `width`, font size and font flags: bold / italic / monospace / symbol / underline).
+ */
+const extractPageFragments = async (
   page: any,
   pdfjsLib: any
-): Promise<{
-  lines: PositionedTextLine[];
-  pageHeight: number;
-  pageWidth: number;
-}> => {
+): Promise<PageFragmentsResult> => {
   const viewport = page.getViewport({ scale: 1.0 });
+  const pageHeight = viewport.height || 800;
+  const pageWidth = viewport.width || 600;
   try {
     const textContent = await page.getTextContent({
       includeMarkedContent: false,
       disableCombineTextItems: false,
     });
     const items: any[] = textContent?.items || [];
+    const styles: Record<string, any> = textContent?.styles || {};
 
-    const positionedItems: {
-      str: string;
-      x: number;
-      y: number;
-      fontSize: number;
-    }[] = [];
+    // Resolving real font names requires the operator list (it also gives us underline strokes)
+    let opList: any = null;
+    try {
+      opList = await page.getOperatorList();
+    } catch {
+      opList = null;
+    }
 
+    const fontCache = new Map<string, ResolvedFontFlags>();
+    const resolveFont = (fontId: string): ResolvedFontFlags => {
+      const cached = fontCache.get(fontId);
+      if (cached) return cached;
+
+      let realName = '';
+      let bold = false;
+      let italic = false;
+      try {
+        if (page.commonObjs?.has?.(fontId)) {
+          const fontObj = page.commonObjs.get(fontId);
+          realName = `${fontObj?.name ?? ''} ${fontObj?.fallbackName ?? ''}`;
+          bold = Boolean(fontObj?.bold || fontObj?.black);
+          italic = Boolean(fontObj?.italic);
+        }
+      } catch {
+        // Font not yet resolved → rely on style family below
+      }
+      const family: string = styles[fontId]?.fontFamily ?? '';
+      const flags = detectFontFlagsFromName(`${realName} ${fontId}`);
+      const resolved: ResolvedFontFlags = {
+        bold: bold || flags.bold,
+        italic: italic || flags.italic,
+        mono: flags.mono || /monospace/i.test(family) || /monospace/i.test(realName),
+        symbol: flags.symbol,
+      };
+      fontCache.set(fontId, resolved);
+      return resolved;
+    };
+
+    const fragments: PageFragment[] = [];
     for (const item of items) {
       const rawStr = typeof item.str === 'string' ? item.str : '';
       if (!rawStr || !rawStr.trim()) continue;
@@ -182,166 +327,67 @@ const extractViewportLinesFromPage = async (
           : item.transform || [12, 0, 0, 12, 0, 0];
 
       const fontSize = Math.max(
-        8,
-        Math.round(Math.hypot(tx[2] || 0, tx[3] || 12))
+        6,
+        Math.round(Math.hypot(tx[2] || 0, tx[3] || 12) * 10) / 10
       );
-      const x = tx[4] || 0;
-      const y = tx[5] || 0;
+      const flags = resolveFont(String(item.fontName ?? ''));
 
-      positionedItems.push({
+      fragments.push({
         str: rawStr,
-        x,
-        y,
+        x: tx[4] || 0,
+        y: tx[5] || 0,
+        width: typeof item.width === 'number' ? Math.abs(item.width) : 0,
         fontSize,
+        bold: flags.bold,
+        italic: flags.italic,
+        mono: flags.mono,
+        symbol: flags.symbol,
+        underline: false,
       });
     }
 
-    const lineGroups: {
-      y: number;
-      fontSize: number;
-      parts: { x: number; str: string }[];
-    }[] = [];
-
-    for (const it of positionedItems) {
-      const existing = lineGroups.find((g) => Math.abs(g.y - it.y) <= 5.5);
-      if (existing) {
-        existing.parts.push({ x: it.x, str: it.str });
-        if (it.fontSize > existing.fontSize) {
-          existing.fontSize = it.fontSize;
+    // Underline detection: a thin horizontal stroke just below the baseline, about as long as the text
+    const strokes = extractUnderlineSegments(opList, pdfjsLib, viewport.transform);
+    if (strokes.length > 0 && strokes.length < 3000) {
+      for (const f of fragments) {
+        if (f.width <= 0) continue;
+        const fEnd = f.x + f.width;
+        for (const s of strokes) {
+          if (s.y < f.y + 0.3 || s.y > f.y + f.fontSize * 0.3 + 2) continue;
+          const overlap = Math.min(s.x2, fEnd) - Math.max(s.x1, f.x);
+          if (overlap < f.width * 0.6) continue;
+          if (s.x2 - s.x1 > f.width * 1.3 + 6) continue;
+          f.underline = true;
+          break;
         }
-      } else {
-        lineGroups.push({
-          y: it.y,
-          fontSize: it.fontSize,
-          parts: [{ x: it.x, str: it.str }],
-        });
       }
     }
 
-    lineGroups.sort((a, b) => a.y - b.y);
-
-    const lines: PositionedTextLine[] = [];
-    for (const grp of lineGroups) {
-      grp.parts.sort((a, b) => a.x - b.x);
-      let joined = '';
-      for (const part of grp.parts) {
-        if (!joined) {
-          joined = part.str;
-        } else if (
-          joined.endsWith(' ') ||
-          part.str.startsWith(' ') ||
-          joined.endsWith('-')
-        ) {
-          joined += part.str;
-        } else {
-          joined += ` ${part.str}`;
-        }
-      }
-      const clean = joined.replace(/\s+/g, ' ').trim();
-      if (clean) {
-        lines.push({
-          text: clean,
-          fontSize: grp.fontSize,
-          topY: Math.max(0, grp.y - grp.fontSize),
-          bottomY: grp.y + 4,
-        });
-      }
-    }
-
-    return {
-      lines,
-      pageHeight: viewport.height || 800,
-      pageWidth: viewport.width || 600,
-    };
+    return { fragments, pageHeight, pageWidth };
   } catch {
-    return {
-      lines: [],
-      pageHeight: viewport.height || 800,
-      pageWidth: viewport.width || 600,
-    };
+    return { fragments: [], pageHeight, pageWidth };
   }
 };
 
 /**
- * Reconstructs natural, verbatim paragraphs with their vertical `topY` and `bottomY` coordinates
- * so inline illustrations can be attached right after the exact paragraph above them!
+ * Converts the page fragments into rich, layout-aware paragraphs (headings, lists, tables, code,
+ * styled paragraphs) that still keep their vertical `topY` / `bottomY` coordinates so inline
+ * illustrations can be attached right after the exact paragraph above them.
  */
 const reconstructPositionedParagraphs = (
-  lines: PositionedTextLine[]
-): PositionedParagraph[] => {
-  if (lines.length === 0) return [];
-
-  const sizes = lines.map((l) => l.fontSize).sort((a, b) => a - b);
-  const medianSize = sizes[Math.floor(sizes.length / 2)] || 12;
-
-  const paragraphs: PositionedParagraph[] = [];
-  let currentPara = '';
-  let currentTopY = 0;
-  let currentBottomY = 0;
-
-  const flush = () => {
-    const cleaned = currentPara.replace(/\s+/g, ' ').trim();
-    if (cleaned) {
-      paragraphs.push({
-        text: cleaned,
-        topY: currentTopY,
-        bottomY: currentBottomY,
-      });
-    }
-    currentPara = '';
-  };
-
-  lines.forEach((line, idx) => {
-    const txt = line.text;
-
-    if (
-      (idx === 0 || idx === lines.length - 1) &&
-      /^(?:page\s*)?\d{1,4}$/i.test(txt) &&
-      lines.length > 2
-    ) {
-      return;
-    }
-
-    const prevLine = idx > 0 ? lines[idx - 1] : null;
-    const verticalGap = prevLine ? line.topY - prevLine.bottomY : 0;
-    const isHeading = line.fontSize >= medianSize * 1.25 && txt.length < 130;
-    const isListItem = /^(?:[•▪▸\-*]|\d{1,3}[.)]|\([a-z0-9]\))\s+/.test(txt);
-
-    if (isHeading) {
-      flush();
-      paragraphs.push({
-        text: txt,
-        topY: line.topY,
-        bottomY: line.bottomY,
-      });
-      return;
-    }
-
-    if (isListItem || verticalGap > line.fontSize * 1.15) {
-      flush();
-    }
-
-    if (!currentPara) {
-      currentPara = txt;
-      currentTopY = line.topY;
-      currentBottomY = line.bottomY;
-    } else if (currentPara.endsWith('-') && /^[a-z]/.test(txt)) {
-      currentPara = currentPara.slice(0, -1) + txt;
-      currentBottomY = line.bottomY;
-    } else {
-      currentPara = `${currentPara} ${txt}`;
-      currentBottomY = line.bottomY;
-    }
-
-    const endsWithPunct = /[.!?؟:;"”']$/.test(txt);
-    if (endsWithPunct && currentPara.length >= 220) {
-      flush();
-    }
-  });
-
-  flush();
-  return paragraphs;
-};
+  fragments: PageFragment[],
+  pageWidth: number,
+  pageHeight: number,
+  bodyFontSize?: number
+): PositionedParagraph[] =>
+  analyzePageLayout(fragments, { bodyFontSize, pageWidth, pageHeight }).map(
+    (p) => ({
+      text: p.rich.text,
+      topY: p.topY,
+      bottomY: p.bottomY,
+      rich: p.rich,
+    })
+  );
 
 /**
  * Renders a PDF page onto an offscreen canvas with an explicit pure white background (`#FFFFFF`).
@@ -922,11 +968,11 @@ export const extractPdfChapterPageRange = async (
   startPage: number,
   endPage: number
 ): Promise<{
-  paragraphs: string[];
+  paragraphs: (string | RawRichParagraph)[];
   figures: BookFigureRecord[];
   paragraphFigures: Record<number, string[]>;
 }> => {
-  const paragraphs: string[] = [];
+  const paragraphs: (string | RawRichParagraph)[] = [];
   const figures: BookFigureRecord[] = [];
   const paragraphFigures: Record<number, string[]> = {};
   const seenFigureNums = new Set<string>();
@@ -945,10 +991,11 @@ export const extractPdfChapterPageRange = async (
   interface PageSlot {
     pageNum: number;
     pageObj: any;
-    lines: PositionedTextLine[];
+    fragments: PageFragment[];
     positionedParas: PositionedParagraph[];
     pageHeight: number;
-    pdfJsParagraphs: string[];
+    pageWidth: number;
+    pdfJsParagraphs: RawRichParagraph[];
     offscreenCanvas?: HTMLCanvasElement | null;
   }
 
@@ -959,27 +1006,50 @@ export const extractPdfChapterPageRange = async (
   for (let pageNum = startPage; pageNum <= safeEnd; pageNum++) {
     try {
       const page = await pdfDoc.getPage(pageNum);
-      const { lines, pageHeight } = await extractViewportLinesFromPage(
+      const { fragments, pageHeight, pageWidth } = await extractPageFragments(
         page,
         pdfjsLib
       );
-      const positionedParas = reconstructPositionedParagraphs(lines);
-      const pdfJsParagraphs = positionedParas.map((p) => p.text);
-      const pageChars = pdfJsParagraphs.join('').length;
-      totalBatchNativeChars += pageChars;
 
       pageSlots.push({
         pageNum,
         pageObj: page,
-        lines,
-        positionedParas,
+        fragments,
+        positionedParas: [],
         pageHeight,
-        pdfJsParagraphs,
+        pageWidth,
+        pdfJsParagraphs: [],
       });
     } catch (pageErr) {
       // Fault isolation: if a single page in the PDF has a broken XRef/circular ref, skip it without failing the batch
       console.warn(`[ByteBook PDF] Skipped malformed page ${pageNum}:`, pageErr);
     }
+  }
+
+  // Layout-aware analysis: the dominant body font size is computed over the whole batch
+  // so headings are classified consistently across pages.
+  const batchBodyFontSize = computeModalFontSize(
+    pageSlots.map((s) => s.fragments)
+  );
+  for (const slot of pageSlots) {
+    try {
+      slot.positionedParas = reconstructPositionedParagraphs(
+        slot.fragments,
+        slot.pageWidth,
+        slot.pageHeight,
+        batchBodyFontSize
+      );
+    } catch (layoutErr) {
+      console.warn(
+        `[ByteBook PDF] Layout analysis failed on page ${slot.pageNum}:`,
+        layoutErr
+      );
+      slot.positionedParas = [];
+    }
+    slot.pdfJsParagraphs = slot.positionedParas.map((p) => p.rich);
+    totalBatchNativeChars += slot.positionedParas
+      .map((p) => p.text)
+      .join('').length;
   }
 
   // Determine whether this 10-page batch is a Scanned PDF (no digital text layer)
@@ -991,7 +1061,7 @@ export const extractPdfChapterPageRange = async (
 
   if (isScannedBatch) {
     for (const slot of pageSlots) {
-      if (slot.pdfJsParagraphs.join('').length < 40) {
+      if (slot.pdfJsParagraphs.map((p) => p.text).join('').length < 40) {
         const canvas = await renderPageToOffscreenCanvas(slot.pageObj, 1.45);
         if (canvas) {
           slot.offscreenCanvas = canvas;

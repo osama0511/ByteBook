@@ -5,3 +5,4 @@ export * from './epubParser';
 export * from './pdfAndTextParser';
 export * from './demoBookData';
 export * from './bookParserService';
+export * from './layoutAnalyzer';

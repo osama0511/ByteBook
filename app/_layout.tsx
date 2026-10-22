@@ -9,6 +9,7 @@ import {
 } from '@expo-google-fonts/ibm-plex-sans-arabic';
 import {
   Literata_400Regular,
+  Literata_400Regular_Italic,
   Literata_700Bold,
 } from '@expo-google-fonts/literata';
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
@@ -38,6 +39,7 @@ export default function RootLayout() {
     Silkscreen_700Bold,
     VT323_400Regular,
     Literata_400Regular,
+    Literata_400Regular_Italic,
     Literata_700Bold,
     IBMPlexSansArabic_400Regular,
     IBMPlexSansArabic_700Bold,

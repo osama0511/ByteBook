@@ -30,6 +30,11 @@ import { useReaderStore, useThemeStore } from '../../store';
 import { PixelBorderWidth, PixelSpacing } from '../../theme/pixelDesignSystem';
 import { PixelBadge, PixelButton, PixelFrame } from '../pixel-ui';
 import { InlineFigureCard } from './InlineFigureCard';
+import {
+  isHeadingBlock,
+  isPageMarkerBlock,
+  ReflowableBlockBody,
+} from './ReflowableReaderView';
 
 export interface InteractiveParagraphProps {
   block: ParsedContentBlock;
@@ -64,11 +69,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
   onOpenFigureObject,
 }) => {
   const { theme, typography } = useThemeStore();
-  const {
-    selection,
-    paragraphTranslations,
-    setParagraphTranslation,
-  } = useReaderStore();
+  const { paragraphTranslations, setParagraphTranslation } = useReaderStore();
   const { colors } = theme;
 
   const [activeSpeechId, setActiveSpeechId] = useState<string | null>(
@@ -82,10 +83,9 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
   }, []);
 
   const isThisBlockSpeaking = activeSpeechId === block.id;
-  const isHeading = block.blockType === 'heading';
-  const baseTextStyle = isHeading
-    ? typography.readingHeading
-    : typography.readingParagraph;
+  const isHeading = isHeadingBlock(block);
+  const isLegacyHeading =
+    block.blockType === 'heading' && !isPageMarkerBlock(block);
 
   const paraTransState = paragraphTranslations[block.id];
 
@@ -148,102 +148,16 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
       {/* Main Reflowable Verbatim Book Text */}
       <View
         style={[
-          isHeading ? styles.headingWrap : styles.paragraphWrap,
-          isHeading ? { borderBottomColor: colors.borderOuter } : null,
+          isLegacyHeading ? styles.headingWrap : styles.paragraphWrap,
+          isLegacyHeading ? { borderBottomColor: colors.borderOuter } : null,
         ]}
       >
-        <Text style={[baseTextStyle, { color: colors.textPrimary }]}>
-          {block.tokenizedPayload.sentences.map((sentence) => {
-            const isSentenceSelected =
-              selection?.granularity === 'sentence' &&
-              selection.sentenceId === sentence.sentenceId;
-
-            return (
-              <Text
-                key={sentence.sentenceId}
-                style={
-                  isSentenceSelected
-                    ? {
-                        backgroundColor: colors.selectionHighlight,
-                        color: colors.textPrimary,
-                      }
-                    : undefined
-                }
-              >
-                {sentence.tokens.map((token) => {
-                  if (token.type === 'figure_badge') {
-                    return (
-                      <Text
-                        key={token.id}
-                        onPress={() => {
-                          if (Platform.OS !== 'web') {
-                            Haptics.impactAsync(
-                              Haptics.ImpactFeedbackStyle.Medium
-                            ).catch(() => {});
-                          }
-                          onFigureBadgePress(token, block);
-                        }}
-                        style={[
-                          typography.pixelBadgeLabel,
-                          styles.inlineFigureBadge,
-                          {
-                            backgroundColor: colors.badgeBackground,
-                            color: colors.badgeText,
-                            borderColor: colors.badgeBorder,
-                          },
-                        ]}
-                      >
-                        {` 🖼️ ${token.badgeLabel} `}
-                      </Text>
-                    );
-                  }
-
-                  if (token.type === 'word') {
-                    const isWordSelected =
-                      selection?.granularity === 'word' &&
-                      selection.tokenId === token.id;
-
-                    return (
-                      <Text
-                        key={token.id}
-                        onPress={() => {
-                          if (Platform.OS !== 'web') {
-                            Haptics.selectionAsync().catch(() => {});
-                          }
-                          onWordPress(token, sentence, block);
-                        }}
-                        onLongPress={() => {
-                          if (Platform.OS !== 'web') {
-                            Haptics.impactAsync(
-                              Haptics.ImpactFeedbackStyle.Medium
-                            ).catch(() => {});
-                          }
-                          onSentenceLongPress(sentence, block);
-                        }}
-                        style={
-                          isWordSelected
-                            ? [
-                                styles.selectedWord,
-                                {
-                                  backgroundColor: colors.accentPrimary,
-                                  color: '#FFFDF7',
-                                },
-                              ]
-                            : undefined
-                        }
-                      >
-                        {token.text}
-                      </Text>
-                    );
-                  }
-
-                  return <Text key={token.id}>{token.text}</Text>;
-                })}
-                {' '}
-              </Text>
-            );
-          })}
-        </Text>
+        <ReflowableBlockBody
+          block={block}
+          onWordPress={onWordPress}
+          onSentenceLongPress={onSentenceLongPress}
+          onFigureBadgePress={onFigureBadgePress}
+        />
 
         {/* Per-Paragraph Interactive Toolbar (Larger, Clearer Buttons + Toggleable Stop Speech) */}
         {!isHeading && (

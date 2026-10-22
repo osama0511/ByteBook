@@ -18,10 +18,13 @@ import {
 import { TokenizerEngine } from './tokenizerEngine';
 import {
   BookFigureRecord,
+  ContentBlockType,
   ParsedBookBundle,
   ParsedChapter,
   ParsedContentBlock,
+  RawRichParagraph,
   SupportedBookFormat,
+  TokenizedBlockPayload,
 } from './types';
 
 export interface RawBookImportInput {
@@ -38,15 +41,7 @@ export interface RawBookImportInput {
   totalPages?: number;
   rawChapters: {
     title: string;
-    paragraphs: (
-      | string
-      | {
-          text: string;
-          attachedFigureIds?: string[];
-          translationAr?: string;
-          simplifiedConceptAr?: string;
-        }
-    )[];
+    paragraphs: (string | RawRichParagraph)[];
     paragraphFigures?: Record<number, string[]>;
     isExtracted?: boolean;
     isCompleted?: boolean;
@@ -64,15 +59,7 @@ export class BookParserService {
   public tokenizeChapterParagraphs(
     bookId: string,
     chapterId: string,
-    paragraphs: (
-      | string
-      | {
-          text: string;
-          attachedFigureIds?: string[];
-          translationAr?: string;
-          simplifiedConceptAr?: string;
-        }
-    )[],
+    paragraphs: (string | RawRichParagraph)[],
     figures: BookFigureRecord[],
     paragraphFigures?: Record<number, string[]>
   ): ParsedContentBlock[] {
@@ -80,21 +67,83 @@ export class BookParserService {
     const tokenizer = new TokenizerEngine(detector);
 
     return paragraphs.map((paraItem, bIndex) => {
-      const rawText = typeof paraItem === 'string' ? paraItem : paraItem.text;
+      const rich: RawRichParagraph | null =
+        typeof paraItem === 'string' ? null : paraItem;
+      let rawText = typeof paraItem === 'string' ? paraItem : paraItem.text;
       const explicitAttached =
         typeof paraItem === 'string'
           ? paragraphFigures?.[bIndex]
-          : paraItem.attachedFigureIds;
+          : paraItem.attachedFigureIds ?? paragraphFigures?.[bIndex];
 
       const blockId = `${chapterId}_blk_${bIndex}`;
-      const isHeading =
+      const isLegacyHeading =
         (bIndex === 0 && rawText.length < 95 && !rawText.endsWith('.')) ||
         /^—\s*Page\s+\d+\s*—$/i.test(rawText.trim());
-      const { payload, referencedFigureIds } = tokenizer.tokenizeParagraph(
-        blockId,
-        rawText,
-        bookId
-      );
+
+      let blockType: ContentBlockType = isLegacyHeading
+        ? 'heading'
+        : 'paragraph';
+      let payload: TokenizedBlockPayload;
+      let referencedFigureIds: string[];
+
+      const richType = rich?.blockType;
+      if (
+        richType === 'table' &&
+        rich?.tableRows &&
+        rich.tableRows.length > 0
+      ) {
+        const tokenizedTable = tokenizer.tokenizeTable(
+          blockId,
+          rich.tableRows,
+          bookId
+        );
+        payload = tokenizedTable.payload;
+        referencedFigureIds = tokenizedTable.referencedFigureIds;
+        rawText = tokenizedTable.rawText;
+        blockType = 'table';
+      } else if (richType === 'code_block') {
+        const tokenizedCode = tokenizer.tokenizeCodeLines(
+          blockId,
+          rawText,
+          bookId
+        );
+        payload = tokenizedCode.payload;
+        referencedFigureIds = tokenizedCode.referencedFigureIds;
+        blockType = 'code_block';
+      } else {
+        const tokenized = tokenizer.tokenizeParagraph(
+          blockId,
+          rawText,
+          bookId,
+          rich?.styleRuns
+        );
+        payload = tokenized.payload;
+        referencedFigureIds = tokenized.referencedFigureIds;
+
+        if (
+          richType === 'heading_1' ||
+          richType === 'heading_2' ||
+          richType === 'heading_3'
+        ) {
+          blockType = richType;
+          payload.layout = {
+            headingLevel: richType === 'heading_1' ? 1 : richType === 'heading_2' ? 2 : 3,
+          };
+        } else if (
+          richType === 'unordered_list_item' ||
+          richType === 'ordered_list_item'
+        ) {
+          blockType = richType;
+          payload.layout = {
+            listMarker: rich?.listMarker,
+            indentLevel: rich?.indentLevel ?? 0,
+          };
+          // The verbatim text keeps its original marker
+          if (rich?.listMarker) rawText = `${rich.listMarker} ${rawText}`;
+        } else if (richType === 'paragraph') {
+          blockType = isLegacyHeading ? 'heading' : 'paragraph';
+        }
+      }
 
       const attachedSet = new Set<string>(explicitAttached ?? []);
       for (const refFigId of referencedFigureIds) {
@@ -110,17 +159,13 @@ export class BookParserService {
         bookId,
         chapterId,
         blockIndex: bIndex,
-        blockType: isHeading ? 'heading' : 'paragraph',
+        blockType,
         rawText,
         tokenizedPayload: payload,
         referencedFigureIds,
         attachedFigureIds: Array.from(attachedSet),
-        cachedTranslationAr:
-          typeof paraItem === 'object' ? paraItem.translationAr : undefined,
-        cachedSimplifiedConceptAr:
-          typeof paraItem === 'object'
-            ? paraItem.simplifiedConceptAr
-            : undefined,
+        cachedTranslationAr: rich ? rich.translationAr : undefined,
+        cachedSimplifiedConceptAr: rich ? rich.simplifiedConceptAr : undefined,
       };
     });
   }

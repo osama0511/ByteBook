@@ -566,7 +566,7 @@ export default function ByteBookReaderScreen() {
                   />
                   {currentBook.format === 'pdf' ? (
                     <PixelButton
-                      label="🔄 إعادة تحليل واستخراج هذه الـ 10 صفحات بالـ AI"
+                      label="📐 إعادة تحليل تنسيق الفصل (Re-parse Layout)"
                       size="sm"
                       variant="secondary"
                       icon="sparkle"
