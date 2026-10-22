@@ -21,6 +21,12 @@ if (fs.existsSync(faviconSrc)) {
 if (fs.existsSync(htmlPath)) {
   let html = fs.readFileSync(htmlPath, 'utf8');
 
+  // Google Site Verification
+  const googleVerificationTag = '<meta name="google-site-verification" content="D4wKdH4xY1dO_42GTdoKLainTuMOr2KEu-XgVqV2ZoY" />';
+  if (!html.includes('google-site-verification')) {
+    html = html.replace('<head>', `<head>\n    ${googleVerificationTag}`);
+  }
+
   // iOS Standalone PWA Meta Tags
   const pwaMetaTags = `
     <!-- iOS Standalone PWA Tags -->

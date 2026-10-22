@@ -12,6 +12,10 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
+          name="google-site-verification"
+          content="D4wKdH4xY1dO_42GTdoKLainTuMOr2KEu-XgVqV2ZoY"
+        />
+        <meta
           name="viewport"
           content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1.00001, viewport-fit=cover, user-scalable=no, shrink-to-fit=no"
         />
