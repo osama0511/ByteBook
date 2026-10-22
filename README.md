@@ -11,7 +11,7 @@
 [![PWA Standalone](https://img.shields.io/badge/PWA-iOS_Safari_Standalone-FF6B6B?style=for-the-badge&logo=apple)](https://developer.apple.com)
 [![GitHub License](https://img.shields.io/badge/License-MIT-gold?style=for-the-badge)](LICENSE)
 
-**قارئ كتب متطور يدمج بين سلاسة النصوص المتدفقة (على غرار تطبيق أبجد)، ومحرك الذكاء الاصطناعي السياقي المزدوج، مع هوية بصرية ساحرة مستوحاة من ألعاب الـ 16-Bit RPG.**
+**قارئ كتب متطور يدمج بين سلاسة النصوص المتدفقة، ومحرك الذكاء الاصطناعي السياقي المزدوج، مع هوية بصرية ساحرة مستوحاة من ألعاب الـ 16-Bit RPG.**
 
 [العربية](#-عن-المشروع) • [English](#-about-bytebook) • [الميزات](#-الميزات-الرئيسية) • [طريقة التشغيل](#-التثبيت-والتشغيل) • [المعمارية](#-المعمارية-التقنية)
 
