@@ -411,15 +411,30 @@ export default function ByteBookSettingsScreen() {
           ) : null}
         </PixelFrame>
 
-        {/* 4. Default Theme & Reading Preferences */}
+        {/* 4. Default Theme & Reading Preferences (Fully Reactive & Auto-Persisted) */}
         <PixelFrame variant="primary" elevation="sm" padding="md">
+          <View style={styles.sectionTitleRow}>
+            <Text
+              style={[
+                typography.pixelSectionTitle,
+                { color: colors.textPrimary },
+              ]}
+            >
+              4. المظهر الافتراضي وخطوط القراءة
+            </Text>
+            <PixelBadge
+              label="حفظ تلقائي فوري ✓"
+              variant="accent"
+            />
+          </View>
+
           <Text
             style={[
-              typography.pixelSectionTitle,
-              { color: colors.textPrimary, marginBottom: 8 },
+              typography.arabicTranslationBody,
+              { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
             ]}
           >
-            4. المظهر الافتراضي وخطوط القراءة
+            تُحفظ كافة خيارات الثيم، نوع الخط، وحجم الخط فورياً في الذاكرة المحلية وتتزامن تلقائياً دون الحاجة لأي زر حفظ.
           </Text>
 
           <View style={styles.rowWrap}>
@@ -435,7 +450,7 @@ export default function ByteBookSettingsScreen() {
             ))}
           </View>
 
-          <View style={[styles.rowWrap, { marginTop: 10 }]}>
+          <View style={[styles.rowWrap, { marginTop: 10, alignItems: 'center' }]}>
             <PixelButton
               label="خط Literata المريح"
               size="sm"
@@ -456,17 +471,24 @@ export default function ByteBookSettingsScreen() {
               flex
               onPress={() => setReadingFontPreference('pixel_retro')}
             />
+          </View>
+
+          <View style={[styles.rowWrap, { marginTop: 10, alignItems: 'center' }]}>
             <PixelButton
-              label={`A- (${readingFontSize - 2})`}
+              label={`تصغير A- (${readingFontSize - 2})`}
               size="sm"
               variant="secondary"
               flex
               onPress={() => setReadingFontSize(readingFontSize - 2)}
             />
+            <PixelBadge
+              label={`حجم الخط: ${readingFontSize}px`}
+              variant="gold"
+            />
             <PixelButton
-              label={`A+ (${readingFontSize + 2})`}
+              label={`تكبير A+ (${readingFontSize + 2})`}
               size="sm"
-              variant="secondary"
+              variant="primary"
               flex
               onPress={() => setReadingFontSize(readingFontSize + 2)}
             />

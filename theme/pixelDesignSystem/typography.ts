@@ -44,7 +44,7 @@ export interface TypographyScale {
 }
 
 export const createTypographyScale = (
-  readingFontSize: number = 22,
+  readingFontSize: number = 16,
   readingFontPreference: ReadingFontPreference = 'serif_comfortable',
   lineHeightMultiplier: number = 1.8
 ): TypographyScale => {
@@ -102,18 +102,18 @@ export const createTypographyScale = (
     },
     readingCodeBlock: {
       fontFamily: PixelFontFamilies.pixelTerminal,
-      fontSize: Math.max(18, readingFontSize),
+      fontSize: Math.max(15, readingFontSize),
       lineHeight: Math.round(Math.max(18, readingFontSize) * 1.5),
     },
     arabicTranslationBody: {
       fontFamily: PixelFontFamilies.arabicRegular,
-      fontSize: Math.max(18, readingFontSize - 1),
+      fontSize: Math.max(15, readingFontSize - 1),
       lineHeight: Math.round(Math.max(18, readingFontSize - 1) * 1.8),
       writingDirection: 'rtl',
     },
     arabicTranslationBold: {
       fontFamily: PixelFontFamilies.arabicBold,
-      fontSize: Math.max(19, readingFontSize),
+      fontSize: Math.max(16, readingFontSize),
       lineHeight: Math.round(Math.max(19, readingFontSize) * 1.8),
       writingDirection: 'rtl',
       fontWeight: '700',

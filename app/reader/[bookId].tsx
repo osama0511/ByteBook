@@ -733,7 +733,7 @@ export default function ByteBookReaderScreen() {
       <PixelModal
         visible={showAppearanceModal}
         title="إعدادات حجم الخط والإضاءة"
-        subtitle="REFLOWABLE TYPOGRAPHY & PAPER MODES"
+        subtitle="حفظ تلقائي فوري للمظهر وحجم الخط ✓"
         onClose={() => setShowAppearanceModal(false)}
       >
         <View style={styles.modalSectionStack}>
