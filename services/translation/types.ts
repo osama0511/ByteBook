@@ -4,6 +4,8 @@
 
 export type TranslationGranularity = 'word' | 'sentence' | 'paragraph';
 
+export type TranslationMode = 'translate' | 'simplify_explain';
+
 export type AIProviderType =
   | 'gemini'
   | 'groq'
@@ -13,6 +15,7 @@ export type AIProviderType =
 export interface ContextualTranslationRequest {
   granularity: TranslationGranularity;
   selectedText: string;
+  mode?: TranslationMode;
   surroundingSentence?: string;
   paragraphContext?: string;
   bookTitle?: string;
@@ -25,6 +28,7 @@ export interface ContextualTranslationRequest {
 export interface ContextualTranslationResponse {
   selectedText: string;
   granularity: TranslationGranularity;
+  mode?: TranslationMode;
   /** IPA Phonetic transcription for word pronunciation */
   phonetic?: string;
   /** Primary context-aware Arabic translation */

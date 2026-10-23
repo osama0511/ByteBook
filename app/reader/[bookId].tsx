@@ -514,6 +514,25 @@ export default function ByteBookReaderScreen() {
             />
           ) : null}
           <PixelButton
+            label="🔄 تحديث الصفحة"
+            size="sm"
+            variant="secondary"
+            flex
+            onPress={async () => {
+              speechService.stop();
+              setIsExtractingChapter(true);
+              try {
+                await ensureChapterExtracted(
+                  currentBook.id,
+                  activeChapterIndex,
+                  true
+                );
+              } finally {
+                setIsExtractingChapter(false);
+              }
+            }}
+          />
+          <PixelButton
             label={`🖼️ الصور (${currentBook.figures.length})`}
             size="sm"
             variant="accent"
@@ -598,64 +617,7 @@ export default function ByteBookReaderScreen() {
             viewabilityConfig={{ itemVisiblePercentThreshold: 40 }}
             contentContainerStyle={styles.flashListContent}
             ListHeaderComponent={
-              <View
-                style={[
-                  styles.chapterBannerBox,
-                  {
-                    backgroundColor: colors.surfaceInset,
-                    borderColor: colors.borderOuter,
-                  },
-                ]}
-              >
-                <View style={styles.chapterBannerMeta}>
-                  <PixelBadge
-                    label={`الصفحة ${activeChapterIndex + 1} من ${
-                      currentBook.chapters.length
-                    }${currentChapter.isCompleted ? ' ✓ مكتملة' : ''}`}
-                    variant={currentChapter.isCompleted ? 'accent' : 'gold'}
-                  />
-                  {currentBook.format === 'pdf' ? (
-                    <PixelButton
-                      label="📐 إعادة تحليل تنسيق الفصل (Re-parse Layout)"
-                      size="sm"
-                      variant="secondary"
-                      icon="sparkle"
-                      onPress={async () => {
-                        setIsExtractingChapter(true);
-                        await ensureChapterExtracted(
-                          currentBook.id,
-                          activeChapterIndex,
-                          true
-                        );
-                        setIsExtractingChapter(false);
-                      }}
-                    />
-                  ) : (
-                    <PixelBadge
-                      label="📜 النص الأصلي الكامل للكتاب (بدون أي تلخيص)"
-                      variant="muted"
-                    />
-                  )}
-                </View>
-
-                <Text
-                  style={[
-                    typography.readingHeading,
-                    { color: colors.accentPrimary, marginTop: 6 },
-                  ]}
-                >
-                  {currentChapter.title}
-                </Text>
-
-                <Text
-                  style={[
-                    typography.arabicTranslationBody,
-                    { color: colors.textSecondary, fontSize: 15, marginTop: 2 },
-                  ]}
-                >
-                  • اضغط على أي كلمة إنجليزية لترجمتها في سياقها وسماع نطقها، أو اضغط على الأرقام المرجعية مثل [1] لفتح الشكل التوضيحي.
-                </Text>
-              </View>
+              <View style={{ height: PixelSpacing.xs }} />
             }
             renderItem={({ item }) => (
               <InteractiveParagraph
@@ -767,12 +729,7 @@ export default function ByteBookReaderScreen() {
             progress={computedProgress}
             segments={18}
             height={14}
-            label={`صفحة ${activeChapterIndex + 1}/${
-              currentBook.chapters.length
-            } • فقرة ${visibleBlockIndex + 1}/${Math.max(
-              1,
-              currentChapter.blocks.length
-            )}`}
+            label={`صفحة ${activeChapterIndex + 1} / ${currentBook.chapters.length}`}
           />
         </View>
         <PixelButton

@@ -121,27 +121,31 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
       .filter((f): f is BookFigureRecord => Boolean(f));
   }, [block.attachedFigureIds, bookFigures]);
 
-  const handleTranslateParagraph = async (showTermsNotes: boolean = false) => {
+  const handleToggleTranslation = async () => {
     if (Platform.OS !== 'web') {
       Haptics.selectionAsync().catch(() => {});
     }
 
+    if (
+      paraTransState?.activeMode === 'translate' &&
+      !paraTransState.isLoading
+    ) {
+      setParagraphTranslation(block.id, null);
+      return;
+    }
+
     if (paraTransState?.translationAr && !paraTransState.isLoading) {
-      if (!showTermsNotes && !paraTransState.showSimplified) {
-        setParagraphTranslation(block.id, null);
-        return;
-      }
-      if (showTermsNotes && paraTransState.simplifiedConceptAr) {
-        setParagraphTranslation(block.id, {
-          showSimplified: !paraTransState.showSimplified,
-        });
-        return;
-      }
+      setParagraphTranslation(block.id, {
+        activeMode: 'translate',
+        showSimplified: false,
+      });
+      return;
     }
 
     setParagraphTranslation(block.id, {
       isLoading: true,
-      showSimplified: showTermsNotes,
+      activeMode: 'translate',
+      showSimplified: false,
     });
 
     const response = await dualTranslationEngine.translateWithContext({
@@ -149,18 +153,65 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
       selectedText: block.rawText,
       paragraphContext: block.rawText,
       domainContext,
-      simplifyConcept: showTermsNotes,
+      mode: 'translate',
+      simplifyConcept: false,
       preCachedTranslationAr: block.cachedTranslationAr,
-      preCachedSimplifiedAr: block.cachedSimplifiedConceptAr,
     });
 
     setParagraphTranslation(block.id, {
       translationAr: response.contextualTranslationAr,
+      activeMode: 'translate',
+      showSimplified: false,
+      isLoading: false,
+      providerUsed: response.providerUsed,
+    });
+  };
+
+  const handleToggleExplanation = async () => {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => {});
+    }
+
+    if (
+      paraTransState?.activeMode === 'explain' &&
+      !paraTransState.isLoading
+    ) {
+      setParagraphTranslation(block.id, null);
+      return;
+    }
+
+    if (paraTransState?.simplifiedConceptAr && !paraTransState.isLoading) {
+      setParagraphTranslation(block.id, {
+        activeMode: 'explain',
+        showSimplified: true,
+      });
+      return;
+    }
+
+    setParagraphTranslation(block.id, {
+      isLoading: true,
+      activeMode: 'explain',
+      showSimplified: true,
+    });
+
+    const response = await dualTranslationEngine.translateWithContext({
+      granularity: 'paragraph',
+      selectedText: block.rawText,
+      paragraphContext: block.rawText,
+      domainContext,
+      mode: 'simplify_explain',
+      simplifyConcept: true,
+      preCachedSimplifiedAr: block.cachedSimplifiedConceptAr,
+    });
+
+    setParagraphTranslation(block.id, {
       simplifiedConceptAr:
         response.simplifiedConceptAr ||
+        response.technicalExplanationAr ||
         block.cachedSimplifiedConceptAr ||
-        `شرح المصطلحات والفكرة: ${response.contextualTranslationAr}`,
-      showSimplified: showTermsNotes,
+        'شرح المفهوم: يوضح هذا المقطع فكرة تقنية وهندسية تركز على طريقة عمل وبنية هذا الجزء في النظام.',
+      activeMode: 'explain',
+      showSimplified: true,
       isLoading: false,
       providerUsed: response.providerUsed,
     });
@@ -215,15 +266,17 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
                 style={[
                   styles.microIconButton,
                   {
-                    backgroundColor: paraTransState?.translationAr
-                      ? colors.surfaceElevated
-                      : colors.surfaceInset,
-                    borderColor: paraTransState?.translationAr
-                      ? colors.accentPrimary
-                      : colors.borderOuter,
+                    backgroundColor:
+                      paraTransState?.activeMode === 'translate'
+                        ? colors.surfaceElevated
+                        : colors.surfaceInset,
+                    borderColor:
+                      paraTransState?.activeMode === 'translate'
+                        ? colors.accentPrimary
+                        : colors.borderOuter,
                   },
                 ]}
-                onPress={() => handleTranslateParagraph(false)}
+                onPress={handleToggleTranslation}
                 onLongPress={() => {
                   if (Platform.OS !== 'web') {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
@@ -282,15 +335,17 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
                 style={[
                   styles.microIconButton,
                   {
-                    backgroundColor: paraTransState?.showSimplified
-                      ? colors.surfaceElevated
-                      : colors.surfaceInset,
-                    borderColor: paraTransState?.showSimplified
-                      ? colors.accentGold
-                      : colors.borderOuter,
+                    backgroundColor:
+                      paraTransState?.activeMode === 'explain'
+                        ? colors.surfaceElevated
+                        : colors.surfaceInset,
+                    borderColor:
+                      paraTransState?.activeMode === 'explain'
+                        ? colors.accentGold
+                        : colors.borderOuter,
                   },
                 ]}
-                onPress={() => handleTranslateParagraph(true)}
+                onPress={handleToggleExplanation}
                 onLongPress={() => {
                   if (Platform.OS !== 'web') {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
@@ -373,7 +428,7 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
         )}
       </View>
 
-      {/* Inline Verbatim Arabic Translation & Terms Explanation Box */}
+      {/* Inline Verbatim Arabic Translation OR Terms Explanation Box (Strictly Mutually Exclusive) */}
       {paraTransState && (
         <PixelFrame
           variant="inset"
@@ -390,15 +445,23 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
                   { color: colors.textSecondary },
                 ]}
               >
-                جاري ترجمة الفقرة كاملة بدقة...
+                {paraTransState.activeMode === 'explain'
+                  ? 'جاري شرح المفهوم وتبسيط المصطلحات...'
+                  : 'جاري ترجمة الفقرة كاملة بدقة...'}
               </Text>
             </View>
           ) : (
             <View style={styles.translationStack}>
               <View style={styles.transHeader}>
                 <PixelBadge
-                  label="الترجمة العربية الكاملة للفقرة"
-                  variant="accent"
+                  label={
+                    paraTransState.activeMode === 'explain'
+                      ? '💡 شرح وتوضيح المفاهيم والمصطلحات'
+                      : 'الترجمة العربية للفقرة'
+                  }
+                  variant={
+                    paraTransState.activeMode === 'explain' ? 'gold' : 'accent'
+                  }
                 />
                 <PixelButton
                   label="إغلاق X"
@@ -408,17 +471,8 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
                 />
               </View>
 
-              <Text
-                style={[
-                  typography.arabicTranslationBody,
-                  { color: colors.textPrimary },
-                ]}
-              >
-                {paraTransState.translationAr}
-              </Text>
-
-              {paraTransState.showSimplified &&
-              paraTransState.simplifiedConceptAr ? (
+              {/* Mutually Exclusive Content */}
+              {paraTransState.activeMode === 'explain' ? (
                 <View
                   style={[
                     styles.simplifiedConceptBox,
@@ -428,21 +482,26 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
                     },
                   ]}
                 >
-                  <PixelBadge
-                    label="💡 شرح وتوضيح المصطلحات العلمية في الفقرة"
-                    variant="gold"
-                    style={{ marginBottom: 6 }}
-                  />
                   <Text
                     style={[
                       typography.arabicTranslationBold,
-                      { color: colors.textPrimary },
+                      { color: colors.textPrimary, lineHeight: 26 },
                     ]}
                   >
-                    {paraTransState.simplifiedConceptAr}
+                    {paraTransState.simplifiedConceptAr ||
+                      'لا يتوفر شرح مبسط إضافي لهذه الفقرة.'}
                   </Text>
                 </View>
-              ) : null}
+              ) : (
+                <Text
+                  style={[
+                    typography.arabicTranslationBody,
+                    { color: colors.textPrimary, lineHeight: 26 },
+                  ]}
+                >
+                  {paraTransState.translationAr}
+                </Text>
+              )}
             </View>
           )}
         </PixelFrame>

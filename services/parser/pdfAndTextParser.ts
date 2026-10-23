@@ -468,7 +468,7 @@ const cropBoxFromCanvas = (
         }
       }
       const inkRatio = inkPixels / totalSampled;
-      if (inkRatio < 0.012) {
+      if (inkRatio < 0.004) {
         return undefined; // Just empty white space!
       }
     }
@@ -878,43 +878,91 @@ const detectAndCropGeometricFiguresOnPage = async (
     precedingParaIndex: number;
   }[]
 > => {
-  if (positionedParas.length === 0 || typeof document === 'undefined') {
+  if (typeof document === 'undefined') {
     return [];
   }
 
+  // 1. Scan for any figure/diagram mentions or captions across the page text
+  const figureMentions: {
+    figNum: string;
+    paraIndex: number;
+    isCaption: boolean;
+    captionText: string;
+  }[] = [];
+  const figRegex = /(?:Figure|Fig\.|Diagram|Illustration|شكل|مخطط)\s*([0-9]+[A-Za-z0-9_.-]*)/i;
+  const captionRegex = /^\s*(?:Figure|Fig\.|Diagram|Illustration|شكل|مخطط)\s*([0-9]+[A-Za-z0-9_.-]*)/i;
+
+  positionedParas.forEach((p, idx) => {
+    const isCaption = captionRegex.test(p.text);
+    const match = p.text.match(figRegex);
+    if (match) {
+      figureMentions.push({
+        figNum: match[1].replace(/[.:,]$/, ''),
+        paraIndex: idx,
+        isCaption,
+        captionText: p.text.slice(0, 100),
+      });
+    }
+  });
+
+  // 2. Discover potential visual illustration gaps (vector paths, diagrams, schemas)
   const candidateGaps: {
     gapTop: number;
     gapBottom: number;
     precedingParaIndex: number;
+    explicitFigNum?: string;
+    explicitCaption?: string;
   }[] = [];
+
+  const minGapRatio = figureMentions.length > 0 ? 0.05 : 0.08;
 
   for (let i = 0; i <= positionedParas.length; i++) {
     const gapTop =
-      i === 0 ? pageHeight * 0.08 : positionedParas[i - 1].bottomY + 6;
+      i === 0 ? pageHeight * 0.05 : positionedParas[i - 1].bottomY + 4;
     const gapBottom =
       i === positionedParas.length
-        ? pageHeight * 0.91
-        : positionedParas[i].topY - 6;
+        ? pageHeight * 0.94
+        : positionedParas[i].topY - 4;
     const gapHeight = gapBottom - gapTop;
 
-    if (gapHeight >= pageHeight * 0.18 && gapHeight <= pageHeight * 0.82) {
+    if (gapHeight >= pageHeight * minGapRatio && gapHeight <= pageHeight * 0.88) {
+      // Check if this gap is directly adjacent to a figure caption
+      const adjacentMention = figureMentions.find(
+        (m) => m.paraIndex === i || m.paraIndex === i - 1
+      );
+
       candidateGaps.push({
         gapTop,
         gapBottom,
         precedingParaIndex: Math.max(0, i - 1),
+        explicitFigNum: adjacentMention?.figNum,
+        explicitCaption: adjacentMention?.captionText,
       });
     }
   }
 
+  // If no gaps between paragraphs, but page has figure mentions or very few paragraphs, check whole center page
+  if (candidateGaps.length === 0 && (figureMentions.length > 0 || positionedParas.length <= 2)) {
+    candidateGaps.push({
+      gapTop: pageHeight * 0.12,
+      gapBottom: pageHeight * 0.88,
+      precedingParaIndex: 0,
+      explicitFigNum: figureMentions[0]?.figNum,
+      explicitCaption: figureMentions[0]?.captionText,
+    });
+  }
+
   if (candidateGaps.length === 0) return [];
 
-  // Sort by largest gap and inspect up to 2 illustration regions per page
-  candidateGaps.sort(
-    (a, b) => b.gapBottom - b.gapTop - (a.gapBottom - a.gapTop)
-  );
-  const topGaps = candidateGaps.slice(0, 2);
+  // Sort: prioritize gaps with explicit figure mentions first, then largest gaps
+  candidateGaps.sort((a, b) => {
+    if (a.explicitFigNum && !b.explicitFigNum) return -1;
+    if (!a.explicitFigNum && b.explicitFigNum) return 1;
+    return b.gapBottom - b.gapTop - (a.gapBottom - a.gapTop);
+  });
 
-  const canvas = await renderPageToOffscreenCanvas(page, 1.35);
+  const topGaps = candidateGaps.slice(0, 3);
+  const canvas = await renderPageToOffscreenCanvas(page, 1.55);
   if (!canvas) return [];
 
   const detected: {
@@ -924,31 +972,40 @@ const detectAndCropGeometricFiguresOnPage = async (
     precedingParaIndex: number;
   }[] = [];
 
+  const usedFigNums = new Set<string>();
+
   topGaps.forEach((gap, idx) => {
-    const ymin = Math.max(45, Math.round((gap.gapTop / pageHeight) * 1000));
-    const ymax = Math.min(955, Math.round((gap.gapBottom / pageHeight) * 1000));
-    if (ymax - ymin < 150) return;
+    const ymin = Math.max(35, Math.round((gap.gapTop / pageHeight) * 1000));
+    const ymax = Math.min(965, Math.round((gap.gapBottom / pageHeight) * 1000));
+    if (ymax - ymin < 65) return;
 
     const croppedUri = cropBoxFromCanvas(
       canvas,
       {
         ymin,
-        xmin: 55,
+        xmin: 40,
         ymax,
-        xmax: 945,
+        xmax: 960,
       },
-      true // Require visible ink so empty white space at the end of a chapter is NEVER cropped!
+      true // Require visible ink
     );
 
     if (croppedUri) {
-      const figNum =
-        topGaps.length === 1 ? `${pageNumber}` : `${pageNumber}.${idx + 1}`;
+      let figNum = gap.explicitFigNum;
+      if (!figNum || usedFigNums.has(figNum)) {
+        figNum =
+          topGaps.length === 1 ? `${pageNumber}` : `${pageNumber}.${idx + 1}`;
+      }
+      usedFigNums.add(figNum);
+
       const contextText =
+        gap.explicitCaption ||
         positionedParas[gap.precedingParaIndex]?.text.slice(0, 95) ||
-        `Page ${pageNumber}`;
+        `Figure on Page ${pageNumber}`;
+
       detected.push({
         figureNumber: figNum,
-        caption: `Illustration on Page ${pageNumber} — "${contextText}..."`,
+        caption: `Figure ${figNum} (Page ${pageNumber}) — "${contextText}"`,
         croppedDataUri: croppedUri,
         precedingParaIndex: gap.precedingParaIndex,
       });

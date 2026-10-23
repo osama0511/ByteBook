@@ -230,7 +230,7 @@ export default function ByteBookLibraryScreen() {
           </View>
         </PixelFrame>
 
-        {/* Action Banner: Import EPUB / PDF / TXT (Chapter-by-Chapter) */}
+        {/* Action Banner: Import EPUB / PDF / TXT */}
         <PixelFrame variant="elevated" elevation="sm" padding="md">
           <View style={styles.importBannerRow}>
             <View style={styles.importTextCol}>
@@ -240,22 +240,13 @@ export default function ByteBookLibraryScreen() {
                   { color: colors.accentSecondary, fontSize: 19 },
                 ]}
               >
-                📥 استيراد كتاب كامل (EPUB / PDF / TXT) — نظام الشابتر بشابتر
-              </Text>
-              <Text
-                style={[
-                  typography.arabicTranslationBody,
-                  { color: colors.textSecondary, fontSize: 16 },
-                ]}
-              >
-                • لا يقوم البرنامج بتلخيص الكتاب إطلاقاً، بل يحافظ على نص الكتاب الأصلي كلمةً بكلمة.{'\n'}
-                • للكتب الضخمة (1000+ صفحة PDF)، يمسك البرنامج الكتاب شابتر بشابتر لكي لا ينضغط الجهاز؛ وحينما تنهي الشابتر تضغط على &ldquo;أنهيت الشابتر&rdquo; ليتعرف على نصوص وصور الشابتر التالي فوراً.
+                📥 استيراد كتاب (PDF / EPUB / TXT)
               </Text>
             </View>
             <PixelButton
               label={
                 isImporting
-                  ? 'جاري استخراج الشابتر الأول...'
+                  ? 'جاري استيراد وتحليل الصفحة الأولى...'
                   : '+ استيراد كتاب جديد'
               }
               variant="primary"
@@ -295,7 +286,7 @@ export default function ByteBookLibraryScreen() {
             📚 رف الكتب الرقمي ({books.length})
           </Text>
           <PixelBadge
-            label="CHAPTER-BY-CHAPTER VERBATIM ENGINE"
+            label="محرك القراءة صفحة بصفحة (Page-by-Page)"
             variant="gold"
           />
         </View>
@@ -304,9 +295,6 @@ export default function ByteBookLibraryScreen() {
           const currentChapIdx = book.currentChapterIndex ?? 0;
           const currentChapterTitle =
             book.chapters[currentChapIdx]?.title || 'Chapter 1';
-          const completedChapters = book.chapters.filter(
-            (c) => c.isCompleted
-          ).length;
 
           return (
             <PixelFrame
@@ -326,12 +314,8 @@ export default function ByteBookLibraryScreen() {
                 <View style={styles.bookInfoCol}>
                   <View style={styles.bookBadgesTop}>
                     <PixelBadge
-                      label={`${book.chapters.length} شابترات (${completedChapters} مكتمل ✓)`}
+                      label={`${book.chapters.length} صفحة`}
                       variant="muted"
-                    />
-                    <PixelBadge
-                      label={`${book.figures.length} صور وأشكال 🖼️`}
-                      variant="figure"
                     />
                     {book.id === 'bytebook_cs_ai_masterpiece' && (
                       <PixelBadge label="★ كتاب تجريبي تفاعلي" variant="gold" />
@@ -355,7 +339,11 @@ export default function ByteBookLibraryScreen() {
                       { color: colors.textSecondary, marginBottom: 6 },
                     ]}
                   >
-                    {book.author} • {book.domainContext}
+                    {book.domainContext &&
+                    !book.domainContext.includes('Original Verbatim') &&
+                    !book.domainContext.includes('Chapter-by-Chapter')
+                      ? `${book.author} • ${book.domainContext}`
+                      : book.author}
                   </Text>
 
                   {/* Pixel XP Progress Bar */}
@@ -418,27 +406,6 @@ export default function ByteBookLibraryScreen() {
                   { borderTopColor: colors.borderOuter },
                 ]}
               >
-                <View style={styles.chapterQuickPills}>
-                  {book.chapters.slice(0, 5).map((ch, idx) => (
-                    <PixelButton
-                      key={ch.id}
-                      label={`شابتر ${idx + 1}${ch.isCompleted ? ' ✓' : ''}`}
-                      size="sm"
-                      variant={
-                        idx === (book.currentChapterIndex ?? 0)
-                          ? 'accent'
-                          : ch.isCompleted
-                          ? 'gold'
-                          : 'ghost'
-                      }
-                      onPress={() => {
-                        setActiveBook(book.id, idx);
-                        router.push(`/reader/${book.id}`);
-                      }}
-                    />
-                  ))}
-                </View>
-
                 <View style={styles.footerRightBtns}>
                   {book.id !== 'bytebook_cs_ai_masterpiece' && (
                     <PixelButton
@@ -450,7 +417,7 @@ export default function ByteBookLibraryScreen() {
                     />
                   )}
                   <PixelButton
-                    label="فتح وقراءة الشابتر ▶"
+                    label="📖 فتح وقراءة الكتاب"
                     size="md"
                     variant="primary"
                     icon="book"

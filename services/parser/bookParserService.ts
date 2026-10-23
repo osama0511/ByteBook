@@ -378,7 +378,7 @@ export class BookParserService {
         author: pdfData.author,
         format: 'pdf',
         coverAccentColor: '#8C3B2B',
-        domainContext: 'Original Verbatim PDF Book (Chapter-by-Chapter)',
+        domainContext: 'Computer Science & Technical Literature',
         totalPages: pdfData.totalPages,
         rawChapters: pdfData.chapters,
         extractedFigures: pdfData.figures,

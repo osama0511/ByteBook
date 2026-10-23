@@ -25,6 +25,7 @@ export interface InlineParagraphTranslationState {
   translationAr: string;
   simplifiedConceptAr?: string;
   showSimplified: boolean;
+  activeMode?: 'translate' | 'explain';
   isLoading: boolean;
   providerUsed?: string;
 }

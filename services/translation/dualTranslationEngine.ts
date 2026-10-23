@@ -2,7 +2,7 @@
  * ByteBook — Multi-Provider Smart Contextual Translation Engine
  * Supports:
  * 1. Local SQLite & Memory Offline Cache (0ms response, zero API cost)
- * 2. Built-in Technical Lexicon & Demo Book Pre-Cached Translations
+ * 2. Distinct pathways for Pure Technical Translation vs. Concept Simplification
  * 3. Google Gemini API (`gemini-2.5-flash` / `gemini-2.0-flash`)
  * 4. GroqCloud API (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`)
  * 5. Built-in Free Cloud Translation Service fallback (works immediately without any API key)
@@ -16,18 +16,21 @@ import {
   AIProviderType,
   ContextualTranslationRequest,
   ContextualTranslationResponse,
+  TranslationMode,
 } from './types';
 
 export class DualTranslationEngine {
   private memoryCache = new Map<string, ContextualTranslationResponse>();
 
   private buildCacheKey(req: ContextualTranslationRequest): string {
+    const mode: TranslationMode =
+      req.mode || (req.simplifyConcept ? 'simplify_explain' : 'translate');
     const cleanTarget = req.selectedText.trim().toLowerCase();
     const contextHash = (req.surroundingSentence ?? '')
       .trim()
       .slice(0, 48)
       .toLowerCase();
-    return `${req.granularity}:${cleanTarget}:${contextHash}`;
+    return `${req.granularity}:${mode}:${cleanTarget}:${contextHash}`;
   }
 
   private parseJsonSafely(rawText: string): Record<string, any> | null {
@@ -52,7 +55,7 @@ export class DualTranslationEngine {
   }
 
   /**
-   * Calls Google Gemini API for deep contextual translation & concept simplification.
+   * Calls Google Gemini API for deep contextual translation or concept simplification.
    */
   private async translateViaGemini(
     req: ContextualTranslationRequest,
@@ -88,17 +91,39 @@ export class DualTranslationEngine {
         ? nonThoughtParts[nonThoughtParts.length - 1].text
         : parts[parts.length - 1]?.text ?? '';
     const parsed = this.parseJsonSafely(textOutput);
-    if (!parsed || !parsed.contextualTranslationAr) return null;
+    if (!parsed) return null;
+
+    const mode: TranslationMode =
+      req.mode || (req.simplifyConcept ? 'simplify_explain' : 'translate');
+    const isExplanation = mode === 'simplify_explain';
+
+    if (isExplanation) {
+      const explanation =
+        parsed.simplifiedConceptAr || parsed.technicalExplanationAr;
+      if (!explanation) return null;
+      return {
+        selectedText: req.selectedText,
+        granularity: req.granularity,
+        mode: 'simplify_explain',
+        contextualTranslationAr: '',
+        simplifiedConceptAr: explanation,
+        technicalExplanationAr: parsed.technicalExplanationAr || undefined,
+        providerUsed: 'gemini',
+        fromCache: false,
+        timestamp: Date.now(),
+      };
+    }
+
+    if (!parsed.contextualTranslationAr) return null;
 
     return {
       selectedText: req.selectedText,
       granularity: req.granularity,
+      mode: 'translate',
       phonetic: parsed.phonetic || undefined,
       contextualTranslationAr: parsed.contextualTranslationAr,
-      simplifiedConceptAr: parsed.simplifiedConceptAr || undefined,
       lexicalMeaningAr: parsed.lexicalMeaningAr || undefined,
       partOfSpeech: parsed.partOfSpeech || undefined,
-      technicalExplanationAr: parsed.technicalExplanationAr || undefined,
       exampleSentenceEn: parsed.exampleSentenceEn || undefined,
       exampleSentenceAr: parsed.exampleSentenceAr || undefined,
       providerUsed: 'gemini',
@@ -108,7 +133,7 @@ export class DualTranslationEngine {
   }
 
   /**
-   * Calls GroqCloud API (OpenAI-compatible endpoint) for ultra-fast LPU contextual translation.
+   * Calls GroqCloud API (OpenAI-compatible endpoint) for ultra-fast LPU contextual translation or simplification.
    */
   private async translateViaGroq(
     req: ContextualTranslationRequest,
@@ -130,7 +155,7 @@ export class DualTranslationEngine {
           {
             role: 'system',
             content:
-              'You are a precise bilingual technical translator that outputs strictly valid JSON.',
+              'You are a precise bilingual technical tutor and translator that outputs strictly valid JSON.',
           },
           { role: 'user', content: prompt },
         ],
@@ -143,17 +168,39 @@ export class DualTranslationEngine {
     const data = await res.json();
     const textOutput = data?.choices?.[0]?.message?.content ?? '';
     const parsed = this.parseJsonSafely(textOutput);
-    if (!parsed || !parsed.contextualTranslationAr) return null;
+    if (!parsed) return null;
+
+    const mode: TranslationMode =
+      req.mode || (req.simplifyConcept ? 'simplify_explain' : 'translate');
+    const isExplanation = mode === 'simplify_explain';
+
+    if (isExplanation) {
+      const explanation =
+        parsed.simplifiedConceptAr || parsed.technicalExplanationAr;
+      if (!explanation) return null;
+      return {
+        selectedText: req.selectedText,
+        granularity: req.granularity,
+        mode: 'simplify_explain',
+        contextualTranslationAr: '',
+        simplifiedConceptAr: explanation,
+        technicalExplanationAr: parsed.technicalExplanationAr || undefined,
+        providerUsed: 'groq',
+        fromCache: false,
+        timestamp: Date.now(),
+      };
+    }
+
+    if (!parsed.contextualTranslationAr) return null;
 
     return {
       selectedText: req.selectedText,
       granularity: req.granularity,
+      mode: 'translate',
       phonetic: parsed.phonetic || undefined,
       contextualTranslationAr: parsed.contextualTranslationAr,
-      simplifiedConceptAr: parsed.simplifiedConceptAr || undefined,
       lexicalMeaningAr: parsed.lexicalMeaningAr || undefined,
       partOfSpeech: parsed.partOfSpeech || undefined,
-      technicalExplanationAr: parsed.technicalExplanationAr || undefined,
       exampleSentenceEn: parsed.exampleSentenceEn || undefined,
       exampleSentenceAr: parsed.exampleSentenceAr || undefined,
       providerUsed: 'groq',
@@ -169,6 +216,28 @@ export class DualTranslationEngine {
     req: ContextualTranslationRequest
   ): Promise<ContextualTranslationResponse | null> {
     try {
+      const mode: TranslationMode =
+        req.mode || (req.simplifyConcept ? 'simplify_explain' : 'translate');
+
+      if (mode === 'simplify_explain') {
+        // Concept explanation: provide clear technical explanation without repeating translation
+        const topicSnippet = req.selectedText.trim().slice(0, 80);
+        return {
+          selectedText: req.selectedText,
+          granularity: req.granularity,
+          mode: 'simplify_explain',
+          contextualTranslationAr: '',
+          simplifiedConceptAr:
+            req.preCachedSimplifiedAr ||
+            `شرح الفكرة والمصطلحات: يناقش هذا المقطع فكرة تقنية وهندسية حول "${topicSnippet}...". الفكرة الأساسية هي توضيح طريقة عمل وسلوك هذا المكون في النظام وأثره العملي. (للحصول على شرح تفصيلي مخصص أضف مفتاح Gemini أو Groq من الإعدادات).`,
+          technicalExplanationAr:
+            'شرح المفاهيم العلمية بأسلوب مبسط دون تكرار الترجمة الحرفية.',
+          providerUsed: 'free_builtin',
+          fromCache: false,
+          timestamp: Date.now(),
+        };
+      }
+
       const encoded = encodeURIComponent(req.selectedText.trim());
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=t&dt=bd&q=${encoded}`;
       const res = await fetch(url);
@@ -223,6 +292,7 @@ export class DualTranslationEngine {
       return {
         selectedText: req.selectedText,
         granularity: req.granularity,
+        mode: 'translate',
         phonetic:
           req.granularity === 'word'
             ? `/${req.selectedText.toLowerCase()}/`
@@ -235,10 +305,6 @@ export class DualTranslationEngine {
         technicalExplanationAr:
           req.granularity === 'word' && exampleSentenceAr
             ? `ترجمة الجملة السياقية: "${exampleSentenceAr}"`
-            : 'تمت الترجمة الفورية عبر المحرك المدمج وحفظت في الذاكرة المحلية.',
-        simplifiedConceptAr:
-          req.granularity !== 'word'
-            ? `المعنى المبسط: ${translated}`
             : undefined,
         exampleSentenceEn:
           req.granularity === 'word' ? req.surroundingSentence : undefined,
@@ -258,7 +324,13 @@ export class DualTranslationEngine {
   public async translateWithContext(
     request: ContextualTranslationRequest
   ): Promise<ContextualTranslationResponse> {
-    const cacheKey = this.buildCacheKey(request);
+    const mode: TranslationMode =
+      request.mode || (request.simplifyConcept ? 'simplify_explain' : 'translate');
+    const effectiveRequest: ContextualTranslationRequest = {
+      ...request,
+      mode,
+    };
+    const cacheKey = this.buildCacheKey(effectiveRequest);
 
     // 1. Check in-memory cache
     const memCached = this.memoryCache.get(cacheKey);
@@ -292,25 +364,25 @@ export class DualTranslationEngine {
 
     if (preferredProvider === 'gemini' && geminiKey) {
       liveResult = await this.translateViaGemini(
-        request,
+        effectiveRequest,
         geminiKey,
         geminiModel
       ).catch(() => null);
     } else if (preferredProvider === 'groq' && groqKey) {
       liveResult = await this.translateViaGroq(
-        request,
+        effectiveRequest,
         groqKey,
         groqModel
       ).catch(() => null);
     } else if (geminiKey) {
       liveResult = await this.translateViaGemini(
-        request,
+        effectiveRequest,
         geminiKey,
         geminiModel
       ).catch(() => null);
     } else if (groqKey) {
       liveResult = await this.translateViaGroq(
-        request,
+        effectiveRequest,
         groqKey,
         groqModel
       ).catch(() => null);
@@ -322,9 +394,9 @@ export class DualTranslationEngine {
       return liveResult;
     }
 
-    // 5. Check built-in Technical Lexicon for words (instant, rich offline metadata)
-    if (request.granularity === 'word') {
-      const cleanWord = request.selectedText
+    // 5. Check built-in Technical Lexicon for words (only in translate mode)
+    if (effectiveRequest.granularity === 'word' && mode === 'translate') {
+      const cleanWord = effectiveRequest.selectedText
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, '');
@@ -338,8 +410,9 @@ export class DualTranslationEngine {
         const lex = TECHNICAL_LEXICON[candidate];
         if (lex) {
           const lexResponse: ContextualTranslationResponse = {
-            selectedText: request.selectedText,
+            selectedText: effectiveRequest.selectedText,
             granularity: 'word',
+            mode: 'translate',
             phonetic: lex.phonetic,
             contextualTranslationAr: lex.contextualTranslationAr,
             lexicalMeaningAr: lex.lexicalMeaningAr,
@@ -359,25 +432,38 @@ export class DualTranslationEngine {
     }
 
     // 6. Check if paragraph has pre-cached translation/simplification from Demo Book
-    if (
-      request.granularity === 'paragraph' &&
-      request.preCachedTranslationAr
-    ) {
-      const demoResponse: ContextualTranslationResponse = {
-        selectedText: request.selectedText,
-        granularity: 'paragraph',
-        contextualTranslationAr: request.preCachedTranslationAr,
-        simplifiedConceptAr: request.preCachedSimplifiedAr,
-        providerUsed: 'offline_dictionary',
-        fromCache: true,
-        timestamp: Date.now(),
-      };
-      this.memoryCache.set(cacheKey, demoResponse);
-      return demoResponse;
+    if (effectiveRequest.granularity === 'paragraph') {
+      if (mode === 'simplify_explain' && effectiveRequest.preCachedSimplifiedAr) {
+        const demoExplain: ContextualTranslationResponse = {
+          selectedText: effectiveRequest.selectedText,
+          granularity: 'paragraph',
+          mode: 'simplify_explain',
+          contextualTranslationAr: '',
+          simplifiedConceptAr: effectiveRequest.preCachedSimplifiedAr,
+          providerUsed: 'offline_dictionary',
+          fromCache: true,
+          timestamp: Date.now(),
+        };
+        this.memoryCache.set(cacheKey, demoExplain);
+        return demoExplain;
+      }
+      if (mode === 'translate' && effectiveRequest.preCachedTranslationAr) {
+        const demoTrans: ContextualTranslationResponse = {
+          selectedText: effectiveRequest.selectedText,
+          granularity: 'paragraph',
+          mode: 'translate',
+          contextualTranslationAr: effectiveRequest.preCachedTranslationAr,
+          providerUsed: 'offline_dictionary',
+          fromCache: true,
+          timestamp: Date.now(),
+        };
+        this.memoryCache.set(cacheKey, demoTrans);
+        return demoTrans;
+      }
     }
 
     // 7. Use Built-in Free Cloud Translation Service
-    const freeResult = await this.translateViaFreeBuiltIn(request);
+    const freeResult = await this.translateViaFreeBuiltIn(effectiveRequest);
     if (freeResult) {
       this.memoryCache.set(cacheKey, freeResult);
       await byteBookDb.saveCachedTranslation(cacheKey, freeResult);
@@ -385,18 +471,34 @@ export class DualTranslationEngine {
     }
 
     // 8. Ultimate Offline Fallback
+    if (mode === 'simplify_explain') {
+      return {
+        selectedText: effectiveRequest.selectedText,
+        granularity: effectiveRequest.granularity,
+        mode: 'simplify_explain',
+        contextualTranslationAr: '',
+        simplifiedConceptAr:
+          effectiveRequest.preCachedSimplifiedAr ||
+          'شرح المفهوم: أنت في وضع عدم الاتصال حالياً. أضف مفتاح Gemini أو Groq من الإعدادات للحصول على شرح مفصل وتلقائي بالذكاء الاصطناعي.',
+        providerUsed: 'offline_dictionary',
+        fromCache: false,
+        timestamp: Date.now(),
+      };
+    }
+
     return {
-      selectedText: request.selectedText,
-      granularity: request.granularity,
+      selectedText: effectiveRequest.selectedText,
+      granularity: effectiveRequest.granularity,
+      mode: 'translate',
       phonetic:
-        request.granularity === 'word'
-          ? `/${request.selectedText.toLowerCase()}/`
+        effectiveRequest.granularity === 'word'
+          ? `/${effectiveRequest.selectedText.toLowerCase()}/`
           : undefined,
       contextualTranslationAr:
-        request.preCachedTranslationAr ||
-        `ترجمة سياقية لـ "${request.selectedText}" (أنت في وضع عدم الاتصال حالياً — أضف مفتاح Gemini أو Groq أو اتصل بالإنترنت لترجمة الكلمات الجديدة).`,
-      simplifiedConceptAr: request.preCachedSimplifiedAr,
-      partOfSpeech: request.granularity === 'word' ? 'Technical Term' : undefined,
+        effectiveRequest.preCachedTranslationAr ||
+        `ترجمة لـ "${effectiveRequest.selectedText}" (أنت في وضع عدم الاتصال — أضف مفتاح Gemini أو Groq لترجمة المحتوى الجديد).`,
+      partOfSpeech:
+        effectiveRequest.granularity === 'word' ? 'Technical Term' : undefined,
       providerUsed: 'offline_dictionary',
       fromCache: false,
       timestamp: Date.now(),
