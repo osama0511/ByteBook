@@ -36,6 +36,7 @@ interface LibraryState {
     progress: number,
     snippet: string
   ) => Promise<void>;
+  markBookCompleted: (bookId: string) => Promise<void>;
   setImportState: (isImporting: boolean, message?: string | null) => void;
   saveWordToVocabulary: (
     item: Omit<VocabularyBankItem, 'id' | 'createdAt' | 'masteryLevel'>
@@ -216,6 +217,36 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       clampedProgress,
       snippet
     );
+  },
+
+  markBookCompleted: async (bookId) => {
+    const state = get();
+    const book = state.books.find((b) => b.id === bookId);
+    if (!book) return;
+
+    const lastChapterIdx = Math.max(0, book.chapters.length - 1);
+    const updatedBook: ParsedBookBundle = {
+      ...book,
+      currentChapterIndex: lastChapterIdx,
+      currentBlockIndex: 0,
+      readingProgress: 1.0,
+      lastReadSnippet: 'تم إنهاء الكتاب بالكامل بنجاح 🏆',
+      lastReadAt: Date.now(),
+      chapters: book.chapters.map((ch) => ({ ...ch, isCompleted: true })),
+    };
+
+    await byteBookDb.saveBookBundle(updatedBook);
+    await byteBookDb.updateReadingPosition(
+      bookId,
+      lastChapterIdx,
+      0,
+      1.0,
+      'تم إنهاء الكتاب بالكامل بنجاح 🏆'
+    );
+
+    set((s) => ({
+      books: s.books.map((b) => (b.id === bookId ? updatedBook : b)),
+    }));
   },
 
   setImportState: (isImporting, message = null) =>

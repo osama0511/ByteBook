@@ -361,7 +361,11 @@ export default function ByteBookLibraryScreen() {
                   {/* Pixel XP Progress Bar */}
                   <PixelProgressBar
                     progress={book.readingProgress ?? 0.1}
-                    label={`التقدم الحالي (${currentChapterTitle.slice(0, 32)})`}
+                    label={
+                      (book.readingProgress ?? 0) >= 0.999
+                        ? 'مكتمل بنسبة 100% 🏆'
+                        : `التقدم الحالي (${currentChapterTitle.slice(0, 32)})`
+                    }
                     segments={16}
                     height={15}
                   />

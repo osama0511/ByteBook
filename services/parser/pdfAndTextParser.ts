@@ -23,7 +23,7 @@ import {
 } from './layoutAnalyzer';
 import { BookFigureRecord, RawRichParagraph } from './types';
 
-export const PAGES_PER_BATCH = 10;
+export const PAGES_PER_BATCH = 1;
 
 export interface ExtractedChapterRaw {
   title: string;
@@ -1146,7 +1146,9 @@ export const extractPdfChapterPageRange = async (
     let firstParaGlobalIdx = paragraphs.length;
 
     if (finalPageParas.length > 0) {
-      paragraphs.push(`— Page ${slot.pageNum} —`);
+      if (startPage !== safeEnd) {
+        paragraphs.push(`— Page ${slot.pageNum} —`);
+      }
       firstParaGlobalIdx = paragraphs.length;
       for (const para of finalPageParas) {
         paragraphs.push(para);
@@ -1240,9 +1242,15 @@ export const extractPdfChapterPageRange = async (
   }
 
   if (paragraphs.length === 0) {
-    paragraphs.push(
-      `الصفحات (${startPage}–${safeEnd}) فارغة أو عبارة عن أغلفة/فواصل خالية من النصوص. اضغط على زر الانتقال إلى الـ 10 صفحات التالية بالأسفل للمتابعة.`
-    );
+    if (startPage === safeEnd) {
+      paragraphs.push(
+        `الصفحة (${startPage}) فارغة أو عبارة عن غلاف/فاصل خالٍ من النصوص. اضغط على زر الصفحة التالية بالأسفل للمتابعة.`
+      );
+    } else {
+      paragraphs.push(
+        `الصفحات (${startPage}–${safeEnd}) فارغة أو عبارة عن أغلفة/فواصل خالية من النصوص. اضغط على زر الصفحة التالية بالأسفل للمتابعة.`
+      );
+    }
   }
 
   return {
@@ -1265,42 +1273,39 @@ export const parsePdfBufferToReflowable = async (
 
   const pdfDoc = await openPdfDocument(pdfBytes);
   const totalPages: number = pdfDoc.numPages || 1;
-  const totalBatches = Math.max(1, Math.ceil(totalPages / PAGES_PER_BATCH));
 
-  const firstBatchEnd = Math.min(totalPages, PAGES_PER_BATCH);
   const firstBatch = await extractPdfChapterPageRange(
     pdfBytes,
     bookId,
     0,
     1,
-    firstBatchEnd
+    1
   );
 
   const chapters: ExtractedChapterRaw[] = [];
 
-  for (let bIdx = 0; bIdx < totalBatches; bIdx++) {
-    const startP = bIdx * PAGES_PER_BATCH + 1;
-    const endP = Math.min(totalPages, (bIdx + 1) * PAGES_PER_BATCH);
-    const rangeLabel = `الصفحات ${startP}–${endP} من ${totalPages}`;
+  for (let p = 1; p <= totalPages; p++) {
+    const pageIdx = p - 1;
+    const rangeLabel = `صفحة ${p} من ${totalPages}`;
 
-    if (bIdx === 0) {
+    if (pageIdx === 0) {
       chapters.push({
-        title: `الجزء 1 (${rangeLabel})`,
+        title: `الصفحة 1 من ${totalPages}`,
         paragraphs: firstBatch.paragraphs,
         paragraphFigures: firstBatch.paragraphFigures,
         isExtracted: true,
-        startPage: startP,
-        endPage: endP,
+        startPage: 1,
+        endPage: 1,
         pageRangeLabel: rangeLabel,
       });
     } else {
       chapters.push({
-        title: `الجزء ${bIdx + 1} (${rangeLabel})`,
+        title: `الصفحة ${p} من ${totalPages}`,
         paragraphs: [],
         paragraphFigures: {},
         isExtracted: false,
-        startPage: startP,
-        endPage: endP,
+        startPage: p,
+        endPage: p,
         pageRangeLabel: rangeLabel,
       });
     }
@@ -1308,7 +1313,7 @@ export const parsePdfBufferToReflowable = async (
 
   return {
     title: fallbackTitle.replace(/\.pdf$/i, ''),
-    author: `كتاب PDF كامل (${totalPages} صفحة • مقسم كل 10 صفحات)`,
+    author: `كتاب PDF كامل (${totalPages} صفحة)`,
     totalPages,
     chapters,
     figures: firstBatch.figures,

@@ -1,9 +1,9 @@
 /**
  * ByteBook — InteractiveParagraph Component
  * - Displays 100% of the book's original verbatim content (NO summarization).
- * - Larger, clearer typography for effortless reading.
- * - Reactive "🔊 قراءة الفقرة" button that transforms into "⏹️ إيقاف النطق" (Red) while speaking
- *   so the user can stop speech at any instant.
+ * - Ultra-compact 28x28px micro pixel action icons (🔊/⏹️, 💡, AR) positioned neatly at the paragraph corner.
+ * - Long-press (mobile) / Hover (web) retro tooltips for intuitive accessibility.
+ * - Smart header/footer/page-number filtering to eliminate visual clutter.
  */
 
 import * as Haptics from 'expo-haptics';
@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -59,6 +60,19 @@ export interface InteractiveParagraphProps {
   ) => void;
 }
 
+/**
+ * Smart filter for headers, footers, page numbers and ultra-short non-body lines
+ * (e.g. "Thinking About Data Systems | 5", page counters, running headings).
+ */
+export const isPageHeaderOrFooter = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (trimmed.length < 25) return true;
+  if (/^.+\s*\|\s*\d+$/i.test(trimmed)) return true;
+  if (/^\d+\s*\|\s*.+$/i.test(trimmed)) return true;
+  if (/^page\s+\d+$/i.test(trimmed)) return true;
+  return false;
+};
+
 export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
   block,
   bookFigures,
@@ -75,6 +89,9 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
   const [activeSpeechId, setActiveSpeechId] = useState<string | null>(
     speechService.getActiveId()
   );
+  const [activeTooltip, setActiveTooltip] = useState<
+    'speak' | 'explain' | 'translate' | null
+  >(null);
 
   useEffect(() => {
     return speechService.subscribe((id) => {
@@ -86,6 +103,12 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
   const isHeading = isHeadingBlock(block);
   const isLegacyHeading =
     block.blockType === 'heading' && !isPageMarkerBlock(block);
+
+  const shouldHideMicroToolbar =
+    isHeading ||
+    isLegacyHeading ||
+    isPageMarkerBlock(block) ||
+    isPageHeaderOrFooter(block.rawText);
 
   const paraTransState = paragraphTranslations[block.id];
 
@@ -159,43 +182,193 @@ export const InteractiveParagraph: React.FC<InteractiveParagraphProps> = ({
           onFigureBadgePress={onFigureBadgePress}
         />
 
-        {/* Per-Paragraph Interactive Toolbar (Larger, Clearer Buttons + Toggleable Stop Speech) */}
-        {!isHeading && (
-          <View style={styles.paragraphToolbar}>
-            <PixelButton
-              label={
-                paraTransState?.translationAr
-                  ? 'إخفاء الترجمة ▲'
-                  : 'ترجمة الفقرة AR'
-              }
-              size="sm"
-              variant={paraTransState?.translationAr ? 'accent' : 'secondary'}
-              icon="translate"
-              flex
-              onPress={() => handleTranslateParagraph(false)}
-            />
+        {/* Compact Micro Pixel Toolbar (28x28px Pixel Buttons + Tooltips) */}
+        {!shouldHideMicroToolbar && (
+          <View style={styles.microToolbarContainer}>
+            {/* 1. Translation Micro Button */}
+            <View style={styles.microButtonWrapper}>
+              {activeTooltip === 'translate' && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.microTooltip,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderColor: colors.borderOuter,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.pixelBadgeLabel,
+                      { color: colors.textPrimary, fontSize: 11 },
+                    ]}
+                  >
+                    {paraTransState?.translationAr
+                      ? 'إخفاء الترجمة'
+                      : 'ترجمة الفقرة AR'}
+                  </Text>
+                </View>
+              )}
+              <Pressable
+                accessibilityLabel="ترجمة الفقرة"
+                style={[
+                  styles.microIconButton,
+                  {
+                    backgroundColor: paraTransState?.translationAr
+                      ? colors.surfaceElevated
+                      : colors.surfaceInset,
+                    borderColor: paraTransState?.translationAr
+                      ? colors.accentPrimary
+                      : colors.borderOuter,
+                  },
+                ]}
+                onPress={() => handleTranslateParagraph(false)}
+                onLongPress={() => {
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+                      () => {}
+                    );
+                  }
+                  setActiveTooltip('translate');
+                }}
+                onPressOut={() => setActiveTooltip(null)}
+                // Web hover support
+                onHoverIn={() => setActiveTooltip('translate')}
+                onHoverOut={() => setActiveTooltip(null)}
+              >
+                <Text
+                  style={[
+                    typography.pixelBadgeLabel,
+                    {
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      color: paraTransState?.translationAr
+                        ? colors.accentPrimary
+                        : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  AR
+                </Text>
+              </Pressable>
+            </View>
 
-            <PixelButton
-              label="شرح المصطلحات 💡"
-              size="sm"
-              variant={paraTransState?.showSimplified ? 'gold' : 'secondary'}
-              icon="sparkle"
-              flex
-              onPress={() => handleTranslateParagraph(true)}
-            />
+            {/* 2. Scientific Terms & Concept Explanation Micro Button */}
+            <View style={styles.microButtonWrapper}>
+              {activeTooltip === 'explain' && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.microTooltip,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderColor: colors.borderOuter,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.pixelBadgeLabel,
+                      { color: colors.textPrimary, fontSize: 11 },
+                    ]}
+                  >
+                    شرح المصطلحات
+                  </Text>
+                </View>
+              )}
+              <Pressable
+                accessibilityLabel="شرح المصطلحات"
+                style={[
+                  styles.microIconButton,
+                  {
+                    backgroundColor: paraTransState?.showSimplified
+                      ? colors.surfaceElevated
+                      : colors.surfaceInset,
+                    borderColor: paraTransState?.showSimplified
+                      ? colors.accentGold
+                      : colors.borderOuter,
+                  },
+                ]}
+                onPress={() => handleTranslateParagraph(true)}
+                onLongPress={() => {
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+                      () => {}
+                    );
+                  }
+                  setActiveTooltip('explain');
+                }}
+                onPressOut={() => setActiveTooltip(null)}
+                // Web hover support
+                onHoverIn={() => setActiveTooltip('explain')}
+                onHoverOut={() => setActiveTooltip(null)}
+              >
+                <Text style={{ fontSize: 13 }}>💡</Text>
+              </Pressable>
+            </View>
 
-            <PixelButton
-              label={
-                isThisBlockSpeaking ? '⏹️ إيقاف النطق' : '🔊 قراءة الفقرة'
-              }
-              size="sm"
-              variant={isThisBlockSpeaking ? 'danger' : 'secondary'}
-              icon={isThisBlockSpeaking ? 'close' : 'speaker'}
-              flex
-              onPress={() =>
-                speechService.toggleSpeakEnglish(block.id, block.rawText)
-              }
-            />
+            {/* 3. Text-to-Speech (TTS) / Stop Micro Button */}
+            <View style={styles.microButtonWrapper}>
+              {activeTooltip === 'speak' && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.microTooltip,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderColor: isThisBlockSpeaking
+                        ? '#FF453A'
+                        : colors.borderOuter,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.pixelBadgeLabel,
+                      { color: colors.textPrimary, fontSize: 11 },
+                    ]}
+                  >
+                    {isThisBlockSpeaking ? 'إيقاف النطق' : 'قراءة الفقرة'}
+                  </Text>
+                </View>
+              )}
+              <Pressable
+                accessibilityLabel={
+                  isThisBlockSpeaking ? 'إيقاف النطق' : 'قراءة الفقرة'
+                }
+                style={[
+                  styles.microIconButton,
+                  {
+                    backgroundColor: isThisBlockSpeaking
+                      ? '#3A1010'
+                      : colors.surfaceInset,
+                    borderColor: isThisBlockSpeaking
+                      ? '#FF453A'
+                      : colors.borderOuter,
+                  },
+                ]}
+                onPress={() =>
+                  speechService.toggleSpeakEnglish(block.id, block.rawText)
+                }
+                onLongPress={() => {
+                  if (Platform.OS !== 'web') {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+                      () => {}
+                    );
+                  }
+                  setActiveTooltip('speak');
+                }}
+                onPressOut={() => setActiveTooltip(null)}
+                // Web hover support
+                onHoverIn={() => setActiveTooltip('speak')}
+                onHoverOut={() => setActiveTooltip(null)}
+              >
+                <Text style={{ fontSize: 13 }}>
+                  {isThisBlockSpeaking ? '⏹️' : '🔊'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         )}
       </View>
@@ -297,7 +470,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
   },
   paragraphWrap: {
-    gap: PixelSpacing.sm,
+    gap: PixelSpacing.xs,
   },
   selectedWord: {
     fontWeight: 'bold',
@@ -310,14 +483,48 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
     fontSize: 15,
   },
-  paragraphToolbar: {
-    width: '100%',
+  microToolbarContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: PixelSpacing.xs,
-    marginTop: PixelSpacing.xs,
+    justifyContent: 'flex-end',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 2,
+    zIndex: 10,
+  },
+  microButtonWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  microIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 2,
+    borderWidth: PixelBorderWidth.thin,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 0,
+    elevation: 1,
+  },
+  microTooltip: {
+    position: 'absolute',
+    bottom: 34,
+    minWidth: 80,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderWidth: PixelBorderWidth.thin,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 1,
+    elevation: 6,
+    zIndex: 999,
   },
   inlineTranslationBox: {
     marginTop: PixelSpacing.sm,

@@ -12,9 +12,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -74,7 +76,6 @@ export default function ByteBookReaderScreen() {
     books,
     initializeLibrary,
     updateBookProgress,
-    completeChapterAndLoadNext,
     ensureChapterExtracted,
   } = useLibraryStore();
 
@@ -93,6 +94,8 @@ export default function ByteBookReaderScreen() {
   const [showAppearanceModal, setShowAppearanceModal] = useState(false);
   const [showChaptersModal, setShowChaptersModal] = useState(false);
   const [showFiguresModal, setShowFiguresModal] = useState(false);
+  const [showJumpModal, setShowJumpModal] = useState(false);
+  const [jumpPageInput, setJumpPageInput] = useState('');
   const [visibleBlockIndex, setVisibleBlockIndex] = useState(0);
   const [isExtractingChapter, setIsExtractingChapter] = useState(false);
   const [activeSpeechId, setActiveSpeechId] = useState<string | null>(
@@ -158,7 +161,7 @@ export default function ByteBookReaderScreen() {
           !retriedChapters[chapterRetryKey]))
   );
 
-  // Ensure current chapter is extracted if user jumped to an unextracted or old placeholder PDF chapter
+  // Ensure current chapter/page is extracted if user jumped to an unextracted or old placeholder PDF page
   useEffect(() => {
     if (currentBook && needsOnDemandExtraction && chapterRetryKey) {
       let cancelled = false;
@@ -180,6 +183,24 @@ export default function ByteBookReaderScreen() {
     currentBook,
     needsOnDemandExtraction,
     chapterRetryKey,
+    activeChapterIndex,
+    ensureChapterExtracted,
+  ]);
+
+  // Background Prefetching: Silently load the next page (currentPage + 1) in advance for instant page turns!
+  useEffect(() => {
+    if (!currentBook) return;
+    const nextIdx = activeChapterIndex + 1;
+    if (nextIdx >= currentBook.chapters.length) return;
+    const nextChap = currentBook.chapters[nextIdx];
+    if (nextChap && (!nextChap.isExtracted || nextChap.blocks.length === 0)) {
+      const timer = setTimeout(() => {
+        ensureChapterExtracted(currentBook.id, nextIdx, false).catch(() => {});
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    currentBook,
     activeChapterIndex,
     ensureChapterExtracted,
   ]);
@@ -376,24 +397,45 @@ export default function ByteBookReaderScreen() {
     }, 100);
   }, [returnAnchor, activeChapterIndex, setActiveChapterIndex, setReturnAnchor]);
 
-  // "أنهيت الشابتر" Handler: Marks current chapter complete, extracts next chapter's text & images, and navigates!
-  const handleCompleteChapterAndNext = async () => {
+  // Page-by-page navigation handler
+  const handleGoToPage = async (targetIndex: number) => {
+    if (!currentBook) return;
+    const clampedIndex = Math.max(
+      0,
+      Math.min(currentBook.chapters.length - 1, targetIndex)
+    );
+    speechService.stop();
+
+    const targetChap = currentBook.chapters[clampedIndex];
+    const needsExtraction =
+      !targetChap || !targetChap.isExtracted || targetChap.blocks.length === 0;
+
+    if (needsExtraction) {
+      setIsExtractingChapter(true);
+      try {
+        await ensureChapterExtracted(currentBook.id, clampedIndex);
+      } finally {
+        setIsExtractingChapter(false);
+      }
+    }
+
+    setActiveChapterIndex(clampedIndex);
+    setVisibleBlockIndex(0);
+    setTimeout(() => {
+      flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, 40);
+  };
+
+  // 100% Book Completion Handler: updates reading_progress to 1.0 (100%), sets last_read_at, and exits to Library
+  const handleFinishBookComplete = async () => {
     if (!currentBook) return;
     speechService.stop();
-    setIsExtractingChapter(true);
     try {
-      const nextIdx = await completeChapterAndLoadNext(
-        currentBook.id,
-        activeChapterIndex
-      );
-      setActiveChapterIndex(nextIdx);
-      setVisibleBlockIndex(0);
-      setTimeout(() => {
-        flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      }, 80);
-    } finally {
-      setIsExtractingChapter(false);
+      await useLibraryStore.getState().markBookCompleted(currentBook.id);
+    } catch (err) {
+      console.warn('Error marking book completed:', err);
     }
+    router.replace('/');
   };
 
   if (!currentBook || !currentChapter) {
@@ -438,17 +480,25 @@ export default function ByteBookReaderScreen() {
             >
               {currentBook.title}
             </Text>
-            <Text
-              style={[
-                typography.pixelBadgeLabel,
-                { color: colors.textSecondary, fontSize: 12 },
-              ]}
-              numberOfLines={1}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="الانتقال إلى صفحة"
+              onPress={() => {
+                setJumpPageInput(String(activeChapterIndex + 1));
+                setShowJumpModal(true);
+              }}
+              style={styles.pageJumpHeaderButton}
             >
-              {`شابتر ${activeChapterIndex + 1} من ${
-                currentBook.chapters.length
-              }: ${currentChapter.title}`}
-            </Text>
+              <Text
+                style={[
+                  typography.pixelBadgeLabel,
+                  { color: colors.accentPrimary, fontSize: 12 },
+                ]}
+                numberOfLines={1}
+              >
+                {`الصفحة ${activeChapterIndex + 1} من ${currentBook.chapters.length} ▾`}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
@@ -478,7 +528,7 @@ export default function ByteBookReaderScreen() {
             onPress={() => setShowAppearanceModal(true)}
           />
           <PixelButton
-            label="الشابترات"
+            label="الصفحات"
             size="sm"
             variant="secondary"
             icon="scroll"
@@ -535,7 +585,7 @@ export default function ByteBookReaderScreen() {
                 { color: colors.textPrimary, marginTop: 12 },
               ]}
             >
-              جاري استخراج وتحليل نصوص وصور هذا الشابتر بالكامل (دون أي تلخيص)...
+              جاري استخراج وتحليل نصوص وصور هذه الصفحة بالكامل (دون أي تلخيص)...
             </Text>
           </View>
         ) : (
@@ -559,9 +609,9 @@ export default function ByteBookReaderScreen() {
               >
                 <View style={styles.chapterBannerMeta}>
                   <PixelBadge
-                    label={`CHAPTER ${activeChapterIndex + 1} / ${
+                    label={`الصفحة ${activeChapterIndex + 1} من ${
                       currentBook.chapters.length
-                    }${currentChapter.isCompleted ? ' ✓ مكتمل' : ''}`}
+                    }${currentChapter.isCompleted ? ' ✓ مكتملة' : ''}`}
                     variant={currentChapter.isCompleted ? 'accent' : 'gold'}
                   />
                   {currentBook.format === 'pdf' ? (
@@ -619,70 +669,81 @@ export default function ByteBookReaderScreen() {
               />
             )}
             ListFooterComponent={
-              <PixelFrame
-                variant="secondary"
-                elevation="md"
-                padding="lg"
-                style={styles.chapterCompleteCard}
-              >
-                <Text
+              <View style={styles.pageFooterContainer}>
+                <View
                   style={[
-                    typography.arabicTranslationBold,
-                    { color: colors.accentPrimary, fontSize: 20 },
+                    styles.pageNavBar,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderColor: colors.borderOuter,
+                    },
                   ]}
                 >
-                  🏁 وصلت إلى نهاية {currentChapter.title}
-                </Text>
-                <Text
-                  style={[
-                    typography.arabicTranslationBody,
-                    { color: colors.textSecondary, fontSize: 16, marginTop: 4 },
-                  ]}
-                >
-                  يستخرج البرنامج محتوى الكتاب كل 10 صفحات على حدة (نصاً كاملاً كلمةً بكلمة مع الصور السياقية فقط دون تحويل الصفحات إلى صور). اضغط أدناه لتحليل وفتح الـ 10 صفحات التالية:
-                </Text>
-
-                <View style={styles.chapterFooterNav}>
+                  {/* Previous Page Button */}
                   {activeChapterIndex > 0 ? (
                     <PixelButton
-                      label="◀ الـ 10 صفحات السابقة"
+                      label="◄ السابقة"
                       size="md"
                       variant="secondary"
-                      fullWidth
-                      onPress={() => {
-                        speechService.stop();
-                        setActiveChapterIndex(activeChapterIndex - 1);
-                        flashListRef.current?.scrollToOffset({
-                          offset: 0,
-                          animated: true,
-                        });
-                      }}
+                      onPress={() => handleGoToPage(activeChapterIndex - 1)}
                     />
-                  ) : null}
+                  ) : (
+                    <View style={{ width: 85 }} />
+                  )}
 
+                  {/* Center Page Indicator (Tap to Jump) */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="الانتقال إلى صفحة"
+                    onPress={() => {
+                      setJumpPageInput(String(activeChapterIndex + 1));
+                      setShowJumpModal(true);
+                    }}
+                    style={[
+                      styles.pageNavCenterIndicator,
+                      {
+                        backgroundColor: colors.surfaceInset,
+                        borderColor: colors.borderOuter,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        typography.pixelBadgeLabel,
+                        { color: colors.accentPrimary, fontSize: 13 },
+                      ]}
+                    >
+                      {`صفحة ${activeChapterIndex + 1} / ${currentBook.chapters.length}`}
+                    </Text>
+                    <Text
+                      style={[
+                        typography.pixelBadgeLabel,
+                        { color: colors.textSecondary, fontSize: 10, marginTop: 2 },
+                      ]}
+                    >
+                      انتقال ▾
+                    </Text>
+                  </Pressable>
+
+                  {/* Next Page OR 100% Finish Book Button */}
                   {hasNextChapter ? (
                     <PixelButton
-                      label={`✓ أنهيت هذا الجزء — تحليل وفتح الـ 10 صفحات التالية (الجزء ${
-                        activeChapterIndex + 2
-                      }) ▶`}
-                      size="lg"
+                      label="التالية ►"
+                      size="md"
                       variant="primary"
-                      icon="check"
-                      fullWidth
-                      onPress={handleCompleteChapterAndNext}
+                      onPress={() => handleGoToPage(activeChapterIndex + 1)}
                     />
                   ) : (
                     <PixelButton
-                      label="✓ أنهيت الجزء الأخير من الكتاب بالكامل 🎉"
-                      size="lg"
-                      variant="gold"
+                      label="🏆 إنهاء الكتاب (100%)"
+                      size="md"
+                      variant="accent"
                       icon="check"
-                      fullWidth
-                      onPress={handleCompleteChapterAndNext}
+                      onPress={handleFinishBookComplete}
                     />
                   )}
                 </View>
-              </PixelFrame>
+              </View>
             }
           />
         )}
@@ -706,7 +767,7 @@ export default function ByteBookReaderScreen() {
             progress={computedProgress}
             segments={18}
             height={14}
-            label={`شابتر ${activeChapterIndex + 1}/${
+            label={`صفحة ${activeChapterIndex + 1}/${
               currentBook.chapters.length
             } • فقرة ${visibleBlockIndex + 1}/${Math.max(
               1,
@@ -857,26 +918,30 @@ export default function ByteBookReaderScreen() {
         </View>
       </PixelModal>
 
-      {/* 6. CHAPTERS TABLE OF CONTENTS MODAL */}
+      {/* 6. PAGES TABLE OF CONTENTS MODAL */}
       <PixelModal
         visible={showChaptersModal}
-        title="فهرس الشابترات (شابتر بشابتر)"
-        subtitle={`${currentBook.chapters.length} CHAPTERS`}
+        title="فهرس الصفحات (صفحة بصفحة)"
+        subtitle={`${currentBook.chapters.length} صفحة`}
         onClose={() => setShowChaptersModal(false)}
       >
         <ScrollView style={{ maxHeight: 380 }}>
           <View style={styles.modalSectionStack}>
             {currentBook.chapters.map((ch, idx) => {
               const statusTag = ch.isCompleted
-                ? '✓ مكتمل'
+                ? '✓ مكتملة'
                 : ch.isExtracted !== false
                 ? `${ch.blocks.length} فقرات جاهزة`
-                : 'يُحلل عند الطلب ⚡';
+                : 'تُحلل عند الطلب ⚡';
+
+              const pageTitle = ch.title.startsWith('الصفحة')
+                ? ch.title
+                : `صفحة ${idx + 1}: ${ch.title}`;
 
               return (
                 <PixelButton
                   key={ch.id}
-                  label={`شابتر ${idx + 1}: ${ch.title} [${statusTag}]`}
+                  label={`${pageTitle} [${statusTag}]`}
                   fullWidth
                   variant={
                     idx === activeChapterIndex
@@ -888,20 +953,115 @@ export default function ByteBookReaderScreen() {
                   onPress={async () => {
                     speechService.stop();
                     setShowChaptersModal(false);
-                    setIsExtractingChapter(true);
-                    await ensureChapterExtracted(currentBook.id, idx);
-                    setActiveChapterIndex(idx);
-                    setIsExtractingChapter(false);
-                    flashListRef.current?.scrollToOffset({
-                      offset: 0,
-                      animated: false,
-                    });
+                    await handleGoToPage(idx);
                   }}
                 />
               );
             })}
           </View>
         </ScrollView>
+      </PixelModal>
+
+      {/* 6B. JUMP TO PAGE MODAL */}
+      <PixelModal
+        visible={showJumpModal}
+        title="الانتقال إلى صفحة"
+        subtitle={`الكتاب يحتوي على ${currentBook.chapters.length} صفحة`}
+        onClose={() => setShowJumpModal(false)}
+      >
+        <View style={styles.modalSectionStack}>
+          <Text
+            style={[
+              typography.arabicTranslationBold,
+              { color: colors.textPrimary, fontSize: 15 },
+            ]}
+          >
+            أدخل رقم الصفحة المراد الانتقال إليها (1 – {currentBook.chapters.length}):
+          </Text>
+
+          <View
+            style={[
+              styles.jumpInputContainer,
+              {
+                backgroundColor: colors.surfaceInset,
+                borderColor: colors.borderOuter,
+              },
+            ]}
+          >
+            <TextInput
+              style={[
+                typography.readingHeading,
+                {
+                  color: colors.textPrimary,
+                  fontSize: 22,
+                  textAlign: 'center',
+                  paddingVertical: 8,
+                },
+              ]}
+              keyboardType="number-pad"
+              value={jumpPageInput}
+              onChangeText={setJumpPageInput}
+              placeholder={`1 - ${currentBook.chapters.length}`}
+              placeholderTextColor={colors.textSecondary}
+              selectTextOnFocus
+              onSubmitEditing={() => {
+                const num = parseInt(jumpPageInput, 10);
+                if (!isNaN(num)) {
+                  const targetIdx = Math.max(
+                    0,
+                    Math.min(currentBook.chapters.length - 1, num - 1)
+                  );
+                  setShowJumpModal(false);
+                  handleGoToPage(targetIdx);
+                }
+              }}
+            />
+          </View>
+
+          <View style={styles.jumpShortcutsRow}>
+            <PixelButton
+              label="الصفحة (1)"
+              size="sm"
+              variant="secondary"
+              flex
+              onPress={() => setJumpPageInput('1')}
+            />
+            <PixelButton
+              label={`المنتصف (${Math.ceil(currentBook.chapters.length / 2)})`}
+              size="sm"
+              variant="secondary"
+              flex
+              onPress={() =>
+                setJumpPageInput(String(Math.ceil(currentBook.chapters.length / 2)))
+              }
+            />
+            <PixelButton
+              label={`الأخيرة (${currentBook.chapters.length})`}
+              size="sm"
+              variant="secondary"
+              flex
+              onPress={() => setJumpPageInput(String(currentBook.chapters.length))}
+            />
+          </View>
+
+          <PixelButton
+            label="انتقال للصفحة ➔"
+            size="lg"
+            variant="primary"
+            fullWidth
+            onPress={() => {
+              const num = parseInt(jumpPageInput, 10);
+              if (!isNaN(num)) {
+                const targetIdx = Math.max(
+                  0,
+                  Math.min(currentBook.chapters.length - 1, num - 1)
+                );
+                setShowJumpModal(false);
+                handleGoToPage(targetIdx);
+              }
+            }}
+          />
+        </View>
       </PixelModal>
 
       {/* 7. BOOK FIGURES & DIAGRAMS GALLERY MODAL */}
@@ -1042,17 +1202,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: PixelSpacing.xs,
   },
-  chapterCompleteCard: {
-    marginTop: PixelSpacing.lg,
+  pageJumpHeaderButton: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  pageFooterContainer: {
+    marginTop: PixelSpacing.xl,
     marginBottom: PixelSpacing.xl,
   },
-  chapterFooterNav: {
+  pageNavBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: PixelSpacing.sm,
-    marginTop: PixelSpacing.md,
+    padding: PixelSpacing.sm,
+    borderWidth: 2,
+    gap: PixelSpacing.xs,
+  },
+  pageNavCenterIndicator: {
+    paddingHorizontal: PixelSpacing.md,
+    paddingVertical: PixelSpacing.xs,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 105,
+  },
+  jumpInputContainer: {
+    borderWidth: 2,
+    paddingHorizontal: PixelSpacing.md,
+    paddingVertical: 4,
+    marginVertical: PixelSpacing.sm,
+  },
+  jumpShortcutsRow: {
+    flexDirection: 'row',
+    gap: PixelSpacing.xs,
+    marginVertical: PixelSpacing.xs,
   },
   bottomHudBar: {
     paddingHorizontal: PixelSpacing.md,

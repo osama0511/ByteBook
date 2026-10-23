@@ -268,8 +268,8 @@ export class BookParserService {
 
     const pdfBytes = await getCachedPdfBufferForBook(book.id);
     if (book.format === 'pdf' && pdfBytes) {
-      const startPage = targetChapter.startPage ?? targetChapterIndex * 10 + 1;
-      const endPage = targetChapter.endPage ?? (targetChapterIndex + 1) * 10;
+      const startPage = targetChapter.startPage ?? targetChapterIndex + 1;
+      const endPage = targetChapter.endPage ?? startPage;
 
       const extracted = await extractPdfChapterPageRange(
         pdfBytes,
